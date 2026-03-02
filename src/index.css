@@ -1,0 +1,107 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+html, body, #root {
+
+  padding: 0;
+  box-sizing: border-box;
+}
+
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+html {
+  font-size: 16px;
+}
+
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen',
+    'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue',
+    sans-serif;
+  -webkit-font-smoothing: antialiased;
+.app-bg {
+  min-height: 100vh;
+  background: linear-gradient(135deg, #f9fafb 0%, #f3f4f6 100%);
+}
+.header {
+  background: #fff;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.04);
+  position: sticky;
+  top: 0;
+  z-index: 40;
+}
+.header-inner {
+  max-width: 480px;
+  margin: 0 auto;
+  padding: 1rem 1.5rem;
+}
+.header-title {
+  font-size: 2rem;
+  font-weight: bold;
+  background: linear-gradient(90deg, #2563eb 0%, #1d4ed8 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  color: transparent;
+}
+.main-content {
+  min-height: calc(100vh - 80px);
+}
+.button-group {
+  max-width: 480px;
+  margin: 0 auto;
+  padding: 1.5rem 1.5rem 0 1.5rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+.main-btn {
+  width: 100%;
+  padding: 1rem 1.5rem;
+  background: #fff;
+  border: 2px solid #bfdbfe;
+  color: #2563eb;
+  font-weight: bold;
+  border-radius: 16px;
+  font-size: 1rem;
+  cursor: pointer;
+  transition: background 0.2s, transform 0.1s;
+}
+.main-btn:hover {
+  background: #f0f9ff;
+}
+.main-btn:active {
+  transform: scale(0.97);
+}
+.back-btn {
+  width: 100%;
+  padding: 1rem 1.5rem;
+  background: #d1d5db;
+  color: #fff;
+  font-weight: bold;
+  border-radius: 16px;
+  font-size: 1rem;
+  cursor: pointer;
+  border: none;
+  transition: background 0.2s, transform 0.1s;
+}
+.back-btn:hover {
+  background: #9ca3af;
+}
+.back-btn:active {
+  transform: scale(0.97);
+}
+  -moz-osx-font-smoothing: grayscale;
+  background-color: #f9fafb;
+  line-height: 1.5;
+}
+
+code {
+  font-family: source-code-pro, Menlo, Monaco, Consolas, 'Courier New',
+    monospace;
+  font-size: 0.875em;
+}
