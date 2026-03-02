@@ -88,6 +88,9 @@ const AttendanceList: React.FC = () => {
           } as AttendanceRecord;
         });
 
+        // 이름 가나다순 정렬
+        merged.sort((a, b) => a.name.localeCompare(b.name, 'ko-KR'));
+
         setRecords(merged);
         setDbMemberNames(members.map((m: any) => m.name as string));
       } catch {

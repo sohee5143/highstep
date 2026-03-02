@@ -245,7 +245,7 @@ const AttendanceTracker: React.FC = () => {
                                                 <div className="tracker-attended-left">
                                                     <span className="tracker-attended-place">{place}</span>
                                                     {dateLabel && (
-                                                        <span className="tracker-attended-date">· {dateLabel}</span>
+                                                        <span className="tracker-attended-date">{dateLabel}</span>
                                                     )}
                                                 </div>
                                                 <span className="tracker-attended-badge">
@@ -468,9 +468,10 @@ const AttendanceTracker: React.FC = () => {
                         border-radius: 8px;
                         padding: 0.5rem 1rem;
                         display: flex;
-                        flex-direction: column;
-                        align-items: flex-start;
-                        gap: 0.15rem;
+                        flex-direction: row;
+                        align-items: center;
+                        justify-content: space-between;
+                        gap: 0.5rem;
                         color: ${COLORS.success};
                         font-size: 0.95rem;
                     }
