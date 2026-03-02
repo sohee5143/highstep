@@ -4,6 +4,16 @@ import { AttendanceRecord, PLACES } from '../types';
 import { getSummaryForName } from '../utils/localAttendance';
 import { supabase } from '../utils/supabaseClient';
 
+const COLORS = {
+    primary: '#E3B04B',
+    background: '#000000',
+    cardBg: '#1A1A1A',
+    textMain: '#FFFFFF',
+    textSub: '#B3B3B3',
+    success: '#22C55E',
+    danger: '#EF4444',
+};
+
 const PLACE_DATES_FEB: Record<string, string> = {
     '강동 알레': '2/2',
     '신환회(종숲)': '2/7',
