@@ -268,8 +268,10 @@ const AttendanceAdmin: React.FC = () => {
             <div className="admin-list-items">
               {checkedMembers.slice().reverse().map((member, idx) => (
                 <div key={idx} className="admin-list-item">
-                  <span className="admin-list-name">{member.name}</span>
-                  <span className="admin-list-place">{member.place}{formatDate(member.timestamp)}</span>
+                  <div className="admin-list-left">
+                    <span className="admin-list-name">{member.name}</span>
+                    <span className="admin-list-place">{member.place}{formatDate(member.timestamp)}</span>
+                  </div>
                   <button
                     type="button"
                     className="admin-list-cancel"
@@ -506,9 +508,15 @@ const AttendanceAdmin: React.FC = () => {
           padding: 0.5rem 1rem;
           display: flex;
           align-items: center;
+          justify-content: space-between;
           gap: 0.7rem;
           color: ${COLORS.success};
           font-size: 0.95rem;
+        }
+        .admin-list-left {
+          display: flex;
+          flex-direction: column;
+          gap: 0.1rem;
         }
         .admin-list-name {
           font-weight: 500;
@@ -520,6 +528,24 @@ const AttendanceAdmin: React.FC = () => {
           font-size: 0.9rem;
           color: ${COLORS.primary};
           font-weight: bold;
+        }
+        .admin-list-cancel {
+          margin-left: auto;
+          padding: 0.25rem 0.7rem;
+          border-radius: 999px;
+          border: 1px solid ${COLORS.danger};
+          background: transparent;
+          color: ${COLORS.danger};
+          font-size: 0.8rem;
+          cursor: pointer;
+          white-space: nowrap;
+          transition: background 0.15s, color 0.15s, transform 0.05s;
+        }
+        .admin-list-cancel:hover {
+          background: rgba(239,68,68,0.18);
+        }
+        .admin-list-cancel:active {
+          transform: scale(0.96);
         }
         @media (min-width: 600px) {
           .admin-root { align-items: center; }

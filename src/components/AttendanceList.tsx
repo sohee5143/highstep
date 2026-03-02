@@ -125,46 +125,112 @@ const AttendanceList: React.FC = () => {
       </header>
       <main className="list-main">
         <div className="list-card">
-          <table className="list-table">
-            <thead>
-              <tr>
-                <th>이름</th>
-                <th>출석횟수</th>
-                <th>필요출석</th>
-                <th>출석확인</th>
-                {PLACES.map((place) => (
-                  <th key={place}>
-                    {place}
-                    {PLACE_DATES_FEB[place] && (
-                      <span className="list-date-header"> ({PLACE_DATES_FEB[place]})</span>
-                    )}
-                  </th>
-                ))}
-              </tr>
-            </thead>
-            <tbody>
-              {records.map((record) => {
-                const isDbBacked = dbMemberNames.includes(record.name);
-                const extra = isDbBacked ? 0 : (extraByName[record.name] || 0);
-                const effectiveCount = record.attendanceCount + extra;
-                return (
-                  <tr key={record.name}>
-                    <td className="list-name-cell">{record.name}</td>
-                    <td>{effectiveCount}</td>
-                    <td>{record.requiredAttendance}</td>
-                    <td className={record.status === 'O' || record.status === '정상' ? 'list-status-ok' : 'list-status-bad'}>
-                      {record.status}
-                    </td>
-                    {PLACES.map((place) => (
-                      <td key={place} className="list-cell-center">
-                        {record.records[place] ? record.records[place] : ''}
+          {/* 데스크톱용 테이블 뷰 */}
+          <div className="list-table-wrapper list-desktop-only">
+            <table className="list-table">
+              <thead>
+                <tr>
+                  <th>이름</th>
+                  <th>출석횟수</th>
+                  <th>필요출석</th>
+                  <th>출석확인</th>
+                  {PLACES.map((place) => (
+                    <th key={place}>
+                      {place}
+                      {PLACE_DATES_FEB[place] && (
+                        <span className="list-date-header"> ({PLACE_DATES_FEB[place]})</span>
+                      )}
+                    </th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {records.map((record) => {
+                  const isDbBacked = dbMemberNames.includes(record.name);
+                  const extra = isDbBacked ? 0 : (extraByName[record.name] || 0);
+                  const effectiveCount = record.attendanceCount + extra;
+                  return (
+                    <tr key={record.name}>
+                      <td className="list-name-cell">{record.name}</td>
+                      <td>{effectiveCount}</td>
+                      <td>{record.requiredAttendance}</td>
+                      <td className={record.status === 'O' || record.status === '정상' ? 'list-status-ok' : 'list-status-bad'}>
+                        {record.status}
                       </td>
-                    ))}
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
+                      {PLACES.map((place) => {
+                        const value = record.records[place];
+                        const display = value === 1 ? 'O' : value || '';
+                        return (
+                          <td key={place} className="list-cell-center">
+                            {display}
+                          </td>
+                        );
+                      })}
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+
+          {/* 모바일용 카드 뷰 */}
+          <div className="list-mobile-only list-card-list">
+            {records.map((record) => {
+              const isDbBacked = dbMemberNames.includes(record.name);
+              const extra = isDbBacked ? 0 : (extraByName[record.name] || 0);
+              const effectiveCount = record.attendanceCount + extra;
+              const placesAttended = PLACES.filter((place) => record.records[place]);
+
+              return (
+                <div key={record.name} className="list-person-card">
+                  <div className="list-person-header">
+                    <div className="list-person-name">{record.name}</div>
+                    <div
+                      className={
+                        record.status === 'O' || record.status === '정상'
+                          ? 'list-status-chip list-status-chip-ok'
+                          : 'list-status-chip list-status-chip-bad'
+                      }
+                    >
+                      {record.status}
+                    </div>
+                  </div>
+                  <div className="list-person-meta">
+                    <span>
+                      출석 {effectiveCount} / {record.requiredAttendance}
+                    </span>
+                  </div>
+                  {placesAttended.length > 0 && (
+                    <div className="list-person-places">
+                      {placesAttended.map((place) => {
+                        const value = record.records[place];
+                        const isQuarter = value === '25분기 반영';
+                        return (
+                          <div key={place} className="list-person-place-row">
+                            <div className="list-person-place-left">
+                              <span className="list-person-place-name">{place}</span>
+                              {PLACE_DATES_FEB[place] && (
+                                <span className="list-person-place-date">{PLACE_DATES_FEB[place]}</span>
+                              )}
+                            </div>
+                            <span
+                              className={
+                                isQuarter
+                                  ? 'list-place-badge list-place-badge-quarter'
+                                  : 'list-place-badge list-place-badge-check'
+                              }
+                            >
+                              {isQuarter ? '25분기' : '✓'}
+                            </span>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+          </div>
         </div>
       </main>
       <style>{`
@@ -211,6 +277,9 @@ const AttendanceList: React.FC = () => {
           padding: 1rem;
           overflow-x: auto;
         }
+        .list-table-wrapper {
+          width: 100%;
+        }
         .list-table {
           width: 100%;
           border-collapse: collapse;
@@ -253,12 +322,109 @@ const AttendanceList: React.FC = () => {
           font-size: 0.75rem;
           color: ${COLORS.textSub};
         }
+        /* 모바일 카드 레이아웃 */
+        .list-card-list {
+          display: none;
+          margin-top: 0.5rem;
+        }
+        .list-person-card {
+          border-radius: 12px;
+          border: 1px solid #333;
+          padding: 0.75rem 0.9rem;
+          margin-bottom: 0.75rem;
+          background: #111;
+        }
+        .list-person-header {
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          margin-bottom: 0.25rem;
+        }
+        .list-person-name {
+          font-weight: 700;
+          font-size: 1rem;
+        }
+        .list-status-chip {
+          padding: 0.15rem 0.5rem;
+          border-radius: 999px;
+          font-size: 0.75rem;
+          font-weight: 600;
+        }
+        .list-status-chip-ok {
+          background: rgba(34,197,94,0.12);
+          color: #22C55E;
+        }
+        .list-status-chip-bad {
+          background: rgba(239,68,68,0.12);
+          color: #EF4444;
+        }
+        .list-person-meta {
+          font-size: 0.8rem;
+          color: ${COLORS.textSub};
+          margin-bottom: 0.4rem;
+        }
+        .list-person-places {
+          display: flex;
+          flex-direction: column;
+          gap: 0.3rem;
+          margin-top: 0.2rem;
+        }
+        .list-person-place-row {
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          gap: 0.5rem;
+        }
+        .list-person-place-left {
+          display: flex;
+          align-items: baseline;
+          gap: 0.35rem;
+        }
+        .list-person-place-name {
+          font-size: 0.85rem;
+        }
+        .list-person-place-date {
+          font-size: 0.75rem;
+          color: ${COLORS.textSub};
+        }
+        .list-place-badge {
+          min-width: 2.1rem;
+          text-align: center;
+          border-radius: 999px;
+          font-size: 0.75rem;
+          font-weight: 700;
+          padding: 0.15rem 0.4rem;
+        }
+        .list-place-badge-check {
+          background: rgba(34,197,94,0.18);
+          color: #4ADE80;
+        }
+        .list-place-badge-quarter {
+          background: rgba(234,179,8,0.18);
+          color: #FACC15;
+        }
+        .list-desktop-only {
+          display: block;
+        }
+        .list-mobile-only {
+          display: none;
+        }
         @media (max-width: 600px) {
           .list-title {
             font-size: 1.1rem;
           }
           .list-desc {
             font-size: 0.85rem;
+          }
+          .list-card {
+            padding: 0.75rem;
+            overflow-x: visible;
+          }
+          .list-table-wrapper.list-desktop-only {
+            display: none;
+          }
+          .list-mobile-only.list-card-list {
+            display: block;
           }
         }
       `}</style>
