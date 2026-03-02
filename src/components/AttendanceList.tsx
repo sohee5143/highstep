@@ -46,7 +46,7 @@ const AttendanceList: React.FC = () => {
 
         const { data: checkins, error: checkinsError } = await supabase
           .from('checkins')
-          .select('member_id, session_id');
+          .select('member_id, session_id, kind');
 
         const { data: sessions, error: sessionsError } = await supabase
           .from('sessions')
@@ -60,16 +60,24 @@ const AttendanceList: React.FC = () => {
         }
 
         const extraByMemberId: Record<number, number> = {};
-        const perMemberPlace: Record<number, Record<string, number>> = {};
+        const perMemberPlace: Record<number, Record<string, number | string>> = {};
         if (!checkinsError && checkins) {
           (checkins as any[]).forEach((c) => {
             const mid = c.member_id as number;
-            extraByMemberId[mid] = (extraByMemberId[mid] || 0) + 1;
             const sid = c.session_id as number;
             const place = sessionPlaceById[sid];
+            const kind = (c as any).kind as string | null;
             if (place) {
               if (!perMemberPlace[mid]) perMemberPlace[mid] = {};
-              perMemberPlace[mid][place] = 1;
+              if (kind === '25분기 반영') {
+                // 25분기 반영은 출석 횟수에는 포함하지 않고 문자열로만 표시
+                perMemberPlace[mid][place] = '25분기 반영';
+              } else {
+                extraByMemberId[mid] = (extraByMemberId[mid] || 0) + 1;
+                if (perMemberPlace[mid][place] !== '25분기 반영') {
+                  perMemberPlace[mid][place] = 1;
+                }
+              }
             }
           });
         }

@@ -44,7 +44,7 @@ const AttendanceTracker: React.FC = () => {
 
                 const { data: checkins, error: checkinsError } = await supabase
                     .from('checkins')
-                    .select('member_id, session_id');
+                    .select('member_id, session_id, kind');
 
                 const { data: sessions, error: sessionsError } = await supabase
                     .from('sessions')
@@ -58,16 +58,25 @@ const AttendanceTracker: React.FC = () => {
                 }
 
                 const extraByMemberId: Record<number, number> = {};
-                const perMemberPlace: Record<number, Record<string, number>> = {};
+                const perMemberPlace: Record<number, Record<string, number | string>> = {};
                 if (!checkinsError && checkins) {
                     (checkins as any[]).forEach((c) => {
                         const mid = c.member_id as number;
-                        extraByMemberId[mid] = (extraByMemberId[mid] || 0) + 1;
                         const sid = c.session_id as number;
                         const place = sessionPlaceById[sid];
+                        const kind = (c as any).kind as string | null;
                         if (place) {
                             if (!perMemberPlace[mid]) perMemberPlace[mid] = {};
-                            perMemberPlace[mid][place] = 1;
+                            if (kind === '25분기 반영') {
+                                // 25분기 반영은 출석 횟수에는 포함하지 않고 표시만 문자열로 남김
+                                perMemberPlace[mid][place] = '25분기 반영';
+                            } else {
+                                extraByMemberId[mid] = (extraByMemberId[mid] || 0) + 1;
+                                // 이미 25분기 반영이 표시되어 있는 경우는 덮어쓰지 않음
+                                if (perMemberPlace[mid][place] !== '25분기 반영') {
+                                    perMemberPlace[mid][place] = 1;
+                                }
+                            }
                         }
                     });
                 }
@@ -482,6 +491,7 @@ const AttendanceTracker: React.FC = () => {
                     .tracker-attended-date {
                         font-size: 0.8rem;
                         color: ${COLORS.textSub};
+                        margin-left: 0.4rem;
                     }
                     .tracker-attended-badge {
                         font-size: 0.9rem;
