@@ -182,10 +182,6 @@ const AttendanceAdmin: React.FC = () => {
     day: 'numeric',
   });
 
-  const isChecked = (name: string, place: string) => {
-    return checkedMembers.some((m) => m.name === name && m.place === place);
-  };
-
   const formatDate = (timestamp: number) => {
     return new Date(timestamp).toLocaleDateString('ko-KR', {
       month: 'numeric',

@@ -4,16 +4,6 @@ import { AttendanceRecord, PLACES } from '../types';
 import { getSummaryForName } from '../utils/localAttendance';
 import { supabase } from '../utils/supabaseClient';
 
-const COLORS = {
-    primary: '#E3B04B',
-    background: '#000000',
-    cardBg: '#1A1A1A',
-    textMain: '#FFFFFF',
-    textSub: '#B3B3B3',
-    success: '#22C55E',
-    danger: '#EF4444',
-};
-
 const PLACE_DATES_FEB: Record<string, string> = {
     '강동 알레': '2/2',
     '신환회(종숲)': '2/7',
@@ -143,13 +133,6 @@ const AttendanceTracker: React.FC = () => {
     const attendanceRate = record && record.requiredAttendance > 0
         ? Math.round((effectiveAttendanceCount / record.requiredAttendance) * 100)
         : 0;
-    const statusColors: { [key: string]: { bg: string; text: string; badge: string } } = {
-        'X': { bg: 'blue-50', text: 'text-blue-700', badge: 'bg-blue-100 text-blue-800' },
-        '부상': { bg: 'yellow-50', text: 'text-yellow-700', badge: 'bg-yellow-100 text-yellow-800' },
-        '25분기 반영': { bg: 'purple-50', text: 'text-purple-700', badge: 'bg-purple-100 text-purple-800' },
-    };
-
-    const statusStyle = statusColors[record?.status || 'X'] || statusColors['X'];
 
         return (
             <div className="tracker-root">
