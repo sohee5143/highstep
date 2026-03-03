@@ -1,8 +1,9 @@
 import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { AttendanceRecord, PLACES } from '../types';
+import { AttendanceRecord } from '../types';
 import { getSummaryForName } from '../utils/localAttendance';
 import { fetchAttendanceSummary } from '../utils/attendanceSummary';
+import { fetchPlacesForCurrentSeason, PlaceInfo } from '../utils/places';
 
 const COLORS = {
     primary: '#E3B04B',
@@ -14,30 +15,22 @@ const COLORS = {
     danger: '#EF4444',
 };
 
-const PLACE_DATES_FEB: Record<string, string> = {
-    '강동 알레': '2/2',
-    '신환회(종숲)': '2/7',
-    '강남 클팍': '2/10',
-    '성수 더클': '2/13',
-    '천호 온플릭': '2/15',
-    '수원킨디': '2/18',
-    '을지로 손상원': '2/23',
-    '이수 더클': '2/26',
-    '연남 더클': '2/28',
-};
-
 const AttendanceTracker: React.FC = () => {
     const [inputName, setInputName] = useState('');
     const [record, setRecord] = useState<AttendanceRecord | null>(null);
     const [suggestions, setSuggestions] = useState<string[]>([]);
     const [allRecords, setAllRecords] = useState<AttendanceRecord[]>([]);
     const [dbMemberNames, setDbMemberNames] = useState<string[]>([]);
+    const [places, setPlaces] = useState<PlaceInfo[]>([]);
 
     useEffect(() => {
         const load = async () => {
             const data = await fetchAttendanceSummary();
             setAllRecords(data);
             setDbMemberNames(data.map((r) => r.name));
+
+            const placeInfos = await fetchPlacesForCurrentSeason();
+            setPlaces(placeInfos);
         };
 
         load();
@@ -171,11 +164,13 @@ const AttendanceTracker: React.FC = () => {
                             <div className="tracker-attended-list">
                                 <span className="tracker-attended-label">정기운동 출석 리스트</span>
                                 <div className="tracker-attended-items">
-                                    {PLACES.filter((place) => {
+                                    {places.filter((p) => {
+                                        const place = p.name;
                                         const base = record.records[place];
                                         const extraCount = extraSummary?.perPlaceCount[place] || 0;
                                         return base || extraCount > 0;
-                                    }).map((place) => {
+                                    }).map((p) => {
+                                        const place = p.name;
                                         const base = record.records[place];
                                         const latestTs = extraSummary?.perPlaceLatest[place];
                                         let dateLabel: string | null = null;
@@ -184,8 +179,8 @@ const AttendanceTracker: React.FC = () => {
                                             const month = d.getMonth() + 1;
                                             const day = d.getDate();
                                             dateLabel = `${month}/${day}`;
-                                        } else if (PLACE_DATES_FEB[place]) {
-                                            dateLabel = PLACE_DATES_FEB[place];
+                                        } else if (p.dateLabel) {
+											dateLabel = p.dateLabel;
                                         }
                                         return (
                                             <div key={place} className="tracker-attended-item">
@@ -201,7 +196,8 @@ const AttendanceTracker: React.FC = () => {
                                             </div>
                                         );
                                     })}
-                                    {!PLACES.some((place) => {
+                                    {!places.some((p) => {
+                                        const place = p.name;
                                         const base = record.records[place];
                                         const extraCount = extraSummary?.perPlaceCount[place] || 0;
                                         return base || extraCount > 0;

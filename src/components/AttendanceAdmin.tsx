@@ -1,6 +1,5 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { PLACES } from '../types';
 import { addCheck, removeCheck } from '../utils/localAttendance';
 import { supabase } from '../utils/supabaseClient';
 
@@ -34,6 +33,7 @@ const AttendanceAdmin: React.FC = () => {
   const [lastChecked, setLastChecked] = useState<CheckedMember | null>(null);
   const [currentTime, setCurrentTime] = useState(new Date());
   const [members, setMembers] = useState<Member[]>([]);
+  const [placeOptions, setPlaceOptions] = useState<string[]>([]);
 
   useEffect(() => {
     const timer = setInterval(() => setCurrentTime(new Date()), 1000);
@@ -51,8 +51,29 @@ const AttendanceAdmin: React.FC = () => {
 
       setMembers(data || []);
     };
+    const fetchPlaces = async () => {
+      const { data, error } = await supabase
+        .from<{ place: string | null }>('sessions')
+        .select('place');
+
+      if (error || !data) {
+        console.error('sessions(place) load failed', error);
+        return;
+      }
+
+      const unique = Array.from(
+        new Set(
+          data
+            .map((s) => s.place)
+            .filter((p): p is string => !!p)
+        )
+      ).sort((a, b) => a.localeCompare(b, 'ko-KR'));
+
+      setPlaceOptions(unique);
+    };
 
     fetchMembers();
+    fetchPlaces();
     return () => clearInterval(timer);
   }, []);
 
@@ -62,7 +83,7 @@ const AttendanceAdmin: React.FC = () => {
     );
   };
 
-  const handlePlaceChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+  const handlePlaceChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setSelectedPlace(e.target.value);
   };
 
@@ -98,7 +119,7 @@ const AttendanceAdmin: React.FC = () => {
 
       let sessionId: number | null = null;
       const { data: existingSessions, error: sessionError } = await supabase
-        .from<{ id: number }>('sessions')
+        .from<{ id: number; date: string; place: string }>('sessions')
         .select('id')
         .eq('date', isoDate)
         .eq('place', selectedPlace)
@@ -108,7 +129,7 @@ const AttendanceAdmin: React.FC = () => {
         sessionId = existingSessions[0].id;
       } else {
         const { data: newSession, error: newSessionError } = await supabase
-          .from<{ id: number }>('sessions')
+          .from<{ id: number; date: string; place: string; season: string }>('sessions')
           .insert([{ date: isoDate, place: selectedPlace, season: '2026-1' }])
           .select('id')
           .single();
@@ -124,7 +145,7 @@ const AttendanceAdmin: React.FC = () => {
       for (const m of members) {
         const memberId = m.id;
         const { data: existingChecks, error: existingCheckError } = await supabase
-          .from<{ id: number }>('checkins')
+          .from<{ id: number; member_id: number; session_id: number }>('checkins')
           .select('id')
           .eq('member_id', memberId)
           .eq('session_id', sessionId)
@@ -223,21 +244,21 @@ const AttendanceAdmin: React.FC = () => {
               );
             })}
           </div>
-          <label htmlFor="place-select" className="admin-label">운동 장소</label>
-          <select
-            id="place-select"
+          <label htmlFor="place-input" className="admin-label">운동 장소 (직접 입력 가능)</label>
+          <input
+            id="place-input"
+            list="place-options"
             value={selectedPlace}
             onChange={handlePlaceChange}
-            aria-label="운동 장소 선택"
+            aria-label="운동 장소 입력 또는 선택"
             className="admin-select"
-          >
-            <option value="">📍 운동 장소를 선택하세요</option>
-            {PLACES.map((place) => (
-              <option key={place} value={place}>
-                {place}
-              </option>
+            placeholder="예) 문래 더클"
+          />
+          <datalist id="place-options">
+            {placeOptions.map((place) => (
+              <option key={place} value={place} />
             ))}
-          </select>
+          </datalist>
           <button
             onClick={handleCheckAttendance}
             disabled={!isFormValid}
@@ -295,7 +316,7 @@ const AttendanceAdmin: React.FC = () => {
                         const memberId = dbMember[0].id;
 
                         const { data: sessions, error: sessionError } = await supabase
-                          .from<{ id: number }>('sessions')
+                          .from<{ id: number; date: string; place: string }>('sessions')
                           .select('id')
                           .eq('date', isoDate)
                           .eq('place', member.place)

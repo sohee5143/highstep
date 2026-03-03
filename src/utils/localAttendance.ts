@@ -1,5 +1,3 @@
-import { PLACES } from '../types';
-
 export interface LocalCheck {
   name: string;
   place: string;
@@ -73,7 +71,6 @@ export function getSummaryForName(name: string): NameSummary {
   let totalExtra = 0;
 
   for (const check of checks) {
-    if (!PLACES.includes(check.place)) continue;
     totalExtra += 1;
     perPlaceCount[check.place] = (perPlaceCount[check.place] || 0) + 1;
     if (!perPlaceLatest[check.place] || perPlaceLatest[check.place] < check.timestamp) {

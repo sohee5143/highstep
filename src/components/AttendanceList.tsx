@@ -1,8 +1,9 @@
 import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { AttendanceRecord, PLACES } from '../types';
+import { AttendanceRecord } from '../types';
 import { loadAllChecks } from '../utils/localAttendance';
 import { fetchAttendanceSummary } from '../utils/attendanceSummary';
+import { fetchPlacesForCurrentSeason, PlaceInfo } from '../utils/places';
 
 const COLORS = {
   primary: '#E3B04B',
@@ -12,23 +13,12 @@ const COLORS = {
   textSub: '#B3B3B3',
 };
 
-const PLACE_DATES_FEB: Record<string, string> = {
-  '강동 알레': '2/2',
-  '신환회(종숲)': '2/7',
-  '강남 클팍': '2/10',
-  '성수 더클': '2/13',
-  '천호 온플릭': '2/15',
-  '수원킨디': '2/18',
-  '을지로 손상원': '2/23',
-  '이수 더클': '2/26',
-  '연남 더클': '2/28',
-};
-
 const AttendanceList: React.FC = () => {
   const checks = loadAllChecks();
 
   const [records, setRecords] = useState<AttendanceRecord[]>([]);
   const [dbMemberNames, setDbMemberNames] = useState<string[]>([]);
+  const [places, setPlaces] = useState<PlaceInfo[]>([]);
 
   const extraByName: Record<string, number> = {};
   checks.forEach((c) => {
@@ -40,6 +30,9 @@ const AttendanceList: React.FC = () => {
       const data = await fetchAttendanceSummary();
       setRecords(data);
       setDbMemberNames(data.map((r) => r.name));
+
+      const placeInfos = await fetchPlacesForCurrentSeason();
+      setPlaces(placeInfos);
     };
 
     fetchSummary();
@@ -70,11 +63,11 @@ const AttendanceList: React.FC = () => {
                   <th>출석횟수</th>
                   <th>필요출석</th>
                   <th>출석확인</th>
-                  {PLACES.map((place) => (
-                    <th key={place}>
-                      {place}
-                      {PLACE_DATES_FEB[place] && (
-                        <span className="list-date-header"> ({PLACE_DATES_FEB[place]})</span>
+                  {places.map((p) => (
+                    <th key={p.name}>
+                      {p.name}
+                      {p.dateLabel && (
+                        <span className="list-date-header"> ({p.dateLabel})</span>
                       )}
                     </th>
                   ))}
@@ -93,7 +86,8 @@ const AttendanceList: React.FC = () => {
                       <td className={record.status === 'O' || record.status === '정상' ? 'list-status-ok' : 'list-status-bad'}>
                         {record.status}
                       </td>
-                      {PLACES.map((place) => {
+                      {places.map((p) => {
+                        const place = p.name;
                         const value = record.records[place];
                         const display = value === 1 ? 'O' : value || '';
                         return (
@@ -115,7 +109,7 @@ const AttendanceList: React.FC = () => {
               const isDbBacked = dbMemberNames.includes(record.name);
               const extra = isDbBacked ? 0 : (extraByName[record.name] || 0);
               const effectiveCount = record.attendanceCount + extra;
-              const placesAttended = PLACES.filter((place) => record.records[place]);
+              const placesAttended = places.filter((p) => record.records[p.name]);
 
               return (
                 <div key={record.name} className="list-person-card">
@@ -138,15 +132,16 @@ const AttendanceList: React.FC = () => {
                   </div>
                   {placesAttended.length > 0 && (
                     <div className="list-person-places">
-                      {placesAttended.map((place) => {
+                      {placesAttended.map((p) => {
+                        const place = p.name;
                         const value = record.records[place];
                         const isQuarter = value === '25분기 반영';
                         return (
                           <div key={place} className="list-person-place-row">
                             <div className="list-person-place-left">
                               <span className="list-person-place-name">{place}</span>
-                              {PLACE_DATES_FEB[place] && (
-                                <span className="list-person-place-date">{PLACE_DATES_FEB[place]}</span>
+                              {p.dateLabel && (
+                                <span className="list-person-place-date">{p.dateLabel}</span>
                               )}
                             </div>
                             <span
