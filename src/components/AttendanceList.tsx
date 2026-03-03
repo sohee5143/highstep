@@ -19,6 +19,7 @@ const AttendanceList: React.FC = () => {
   const [records, setRecords] = useState<AttendanceRecord[]>([]);
   const [dbMemberNames, setDbMemberNames] = useState<string[]>([]);
   const [places, setPlaces] = useState<PlaceInfo[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
 
   const extraByName: Record<string, number> = {};
   checks.forEach((c) => {
@@ -26,16 +27,27 @@ const AttendanceList: React.FC = () => {
   });
 
   useEffect(() => {
+    let cancelled = false;
     const fetchSummary = async () => {
-      const data = await fetchAttendanceSummary();
-      setRecords(data);
-      setDbMemberNames(data.map((r) => r.name));
+      setIsLoading(true);
+      try {
+        const data = await fetchAttendanceSummary();
+        if (cancelled) return;
+        setRecords(data);
+        setDbMemberNames(data.map((r) => r.name));
 
-      const placeInfos = await fetchPlacesForCurrentSeason();
-      setPlaces(placeInfos);
+        const placeInfos = await fetchPlacesForCurrentSeason();
+        if (cancelled) return;
+        setPlaces(placeInfos);
+      } finally {
+        if (!cancelled) setIsLoading(false);
+      }
     };
 
     fetchSummary();
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   return (
@@ -54,114 +66,122 @@ const AttendanceList: React.FC = () => {
       </header>
       <main className="list-main">
         <div className="list-card">
-          {/* 데스크톱용 테이블 뷰 */}
-          <div className="list-table-wrapper list-desktop-only">
-            <table className="list-table">
-              <thead>
-                <tr>
-                  <th>이름</th>
-                  <th>출석횟수</th>
-                  <th>필요출석</th>
-                  <th>출석확인</th>
-                  {places.map((p) => (
-                    <th key={p.name}>
-                      {p.name}
-                      {p.dateLabel && (
-                        <span className="list-date-header"> ({p.dateLabel})</span>
-                      )}
-                    </th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody>
+          {isLoading ? (
+            <div className="list-loading" aria-label="데이터 로딩 중">
+              <div className="list-spinner" />
+            </div>
+          ) : (
+            <>
+              {/* 데스크톱용 테이블 뷰 */}
+              <div className="list-table-wrapper list-desktop-only">
+                <table className="list-table">
+                  <thead>
+                    <tr>
+                      <th>이름</th>
+                      <th>출석횟수</th>
+                      <th>필요출석</th>
+                      <th>출석확인</th>
+                      {places.map((p) => (
+                        <th key={p.name}>
+                          {p.name}
+                          {p.dateLabel && (
+                            <span className="list-date-header"> ({p.dateLabel})</span>
+                          )}
+                        </th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {records.map((record) => {
+                      const isDbBacked = dbMemberNames.includes(record.name);
+                      const extra = isDbBacked ? 0 : (extraByName[record.name] || 0);
+                      const effectiveCount = record.attendanceCount + extra;
+                      return (
+                        <tr key={record.name}>
+                          <td className="list-name-cell">{record.name}</td>
+                          <td>{effectiveCount}</td>
+                          <td>{record.requiredAttendance}</td>
+                          <td className={record.status === 'O' || record.status === '정상' ? 'list-status-ok' : 'list-status-bad'}>
+                            {record.status}
+                          </td>
+                          {places.map((p) => {
+                            const place = p.name;
+                            const value = record.records[place];
+                            const display = value === 1 ? 'O' : value || '';
+                            return (
+                              <td key={place} className="list-cell-center">
+                                {display}
+                              </td>
+                            );
+                          })}
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+
+              {/* 모바일용 카드 뷰 */}
+              <div className="list-mobile-only list-card-list">
                 {records.map((record) => {
                   const isDbBacked = dbMemberNames.includes(record.name);
                   const extra = isDbBacked ? 0 : (extraByName[record.name] || 0);
                   const effectiveCount = record.attendanceCount + extra;
+                  const placesAttended = places.filter((p) => record.records[p.name]);
+
                   return (
-                    <tr key={record.name}>
-                      <td className="list-name-cell">{record.name}</td>
-                      <td>{effectiveCount}</td>
-                      <td>{record.requiredAttendance}</td>
-                      <td className={record.status === 'O' || record.status === '정상' ? 'list-status-ok' : 'list-status-bad'}>
-                        {record.status}
-                      </td>
-                      {places.map((p) => {
-                        const place = p.name;
-                        const value = record.records[place];
-                        const display = value === 1 ? 'O' : value || '';
-                        return (
-                          <td key={place} className="list-cell-center">
-                            {display}
-                          </td>
-                        );
-                      })}
-                    </tr>
+                    <div key={record.name} className="list-person-card">
+                      <div className="list-person-header">
+                        <div className="list-person-name">{record.name}</div>
+                        <div
+                          className={
+                            record.status === 'O' || record.status === '정상'
+                              ? 'list-status-chip list-status-chip-ok'
+                              : 'list-status-chip list-status-chip-bad'
+                          }
+                        >
+                          {record.status}
+                        </div>
+                      </div>
+                      <div className="list-person-meta">
+                        <span>
+                          출석 {effectiveCount} / {record.requiredAttendance}
+                        </span>
+                      </div>
+                      {placesAttended.length > 0 && (
+                        <div className="list-person-places">
+                          {placesAttended.map((p) => {
+                            const place = p.name;
+                            const value = record.records[place];
+                            const isQuarter = value === '25분기 반영';
+                            return (
+                              <div key={place} className="list-person-place-row">
+                                <div className="list-person-place-left">
+                                  <span className="list-person-place-name">{place}</span>
+                                  {p.dateLabel && (
+                                    <span className="list-person-place-date">{p.dateLabel}</span>
+                                  )}
+                                </div>
+                                <span
+                                  className={
+                                    isQuarter
+                                      ? 'list-place-badge list-place-badge-quarter'
+                                      : 'list-place-badge list-place-badge-check'
+                                  }
+                                >
+                                  {isQuarter ? '25분기' : '✓'}
+                                </span>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      )}
+                    </div>
                   );
                 })}
-              </tbody>
-            </table>
-          </div>
-
-          {/* 모바일용 카드 뷰 */}
-          <div className="list-mobile-only list-card-list">
-            {records.map((record) => {
-              const isDbBacked = dbMemberNames.includes(record.name);
-              const extra = isDbBacked ? 0 : (extraByName[record.name] || 0);
-              const effectiveCount = record.attendanceCount + extra;
-              const placesAttended = places.filter((p) => record.records[p.name]);
-
-              return (
-                <div key={record.name} className="list-person-card">
-                  <div className="list-person-header">
-                    <div className="list-person-name">{record.name}</div>
-                    <div
-                      className={
-                        record.status === 'O' || record.status === '정상'
-                          ? 'list-status-chip list-status-chip-ok'
-                          : 'list-status-chip list-status-chip-bad'
-                      }
-                    >
-                      {record.status}
-                    </div>
-                  </div>
-                  <div className="list-person-meta">
-                    <span>
-                      출석 {effectiveCount} / {record.requiredAttendance}
-                    </span>
-                  </div>
-                  {placesAttended.length > 0 && (
-                    <div className="list-person-places">
-                      {placesAttended.map((p) => {
-                        const place = p.name;
-                        const value = record.records[place];
-                        const isQuarter = value === '25분기 반영';
-                        return (
-                          <div key={place} className="list-person-place-row">
-                            <div className="list-person-place-left">
-                              <span className="list-person-place-name">{place}</span>
-                              {p.dateLabel && (
-                                <span className="list-person-place-date">{p.dateLabel}</span>
-                              )}
-                            </div>
-                            <span
-                              className={
-                                isQuarter
-                                  ? 'list-place-badge list-place-badge-quarter'
-                                  : 'list-place-badge list-place-badge-check'
-                              }
-                            >
-                              {isQuarter ? '25분기' : '✓'}
-                            </span>
-                          </div>
-                        );
-                      })}
-                    </div>
-                  )}
-                </div>
-              );
-            })}
-          </div>
+              </div>
+            </>
+          )}
         </div>
       </main>
       <style>{`
@@ -339,6 +359,23 @@ const AttendanceList: React.FC = () => {
         }
         .list-mobile-only {
           display: none;
+        }
+        .list-loading {
+          min-height: 220px;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+        }
+        .list-spinner {
+          width: 36px;
+          height: 36px;
+          border-radius: 999px;
+          border: 3px solid rgba(179,179,179,0.35);
+          border-top-color: ${COLORS.primary};
+          animation: listSpin 0.9s linear infinite;
+        }
+        @keyframes listSpin {
+          to { transform: rotate(360deg); }
         }
         @media (max-width: 600px) {
           .list-title {

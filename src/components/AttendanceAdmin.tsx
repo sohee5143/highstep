@@ -34,6 +34,7 @@ const AttendanceAdmin: React.FC = () => {
   const [currentTime, setCurrentTime] = useState(new Date());
   const [members, setMembers] = useState<Member[]>([]);
   const [placeOptions, setPlaceOptions] = useState<string[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
     const timer = setInterval(() => setCurrentTime(new Date()), 1000);
@@ -72,8 +73,17 @@ const AttendanceAdmin: React.FC = () => {
       setPlaceOptions(unique);
     };
 
-    fetchMembers();
-    fetchPlaces();
+    let cancelled = false;
+    const load = async () => {
+      setIsLoading(true);
+      try {
+        await Promise.all([fetchMembers(), fetchPlaces()]);
+      } finally {
+        if (!cancelled) setIsLoading(false);
+      }
+    };
+
+    load();
     return () => clearInterval(timer);
   }, []);
 
@@ -221,28 +231,34 @@ const AttendanceAdmin: React.FC = () => {
         <div className="admin-card admin-form-card">
           <label className="admin-label">부원 선택</label>
           <div className="admin-member-list" aria-label="부원 선택 목록">
-            {members.map((member) => {
-              const checked = selectedNames.includes(member.name);
-              return (
-                <label
-                  key={member.id}
-                  className={
-                    'admin-member-item' + (checked ? ' admin-member-item-selected' : '')
-                  }
-                >
-                  <input
-                    type="checkbox"
-                    className="admin-member-checkbox"
-                    checked={checked}
-                    onChange={() => toggleName(member.name)}
-                  />
-                  <span className="admin-member-name">{member.name}</span>
-                  <span className="admin-member-meta">
-                    {member.gender === '남' ? '남' : '여'} · {member.type === '기존' ? '기존부원' : '신입'}
-                  </span>
-                </label>
-              );
-            })}
+            {isLoading ? (
+              <div className="admin-loading" aria-label="데이터 로딩 중">
+                <div className="admin-spinner" />
+              </div>
+            ) : (
+              members.map((member) => {
+                const checked = selectedNames.includes(member.name);
+                return (
+                  <label
+                    key={member.id}
+                    className={
+                      'admin-member-item' + (checked ? ' admin-member-item-selected' : '')
+                    }
+                  >
+                    <input
+                      type="checkbox"
+                      className="admin-member-checkbox"
+                      checked={checked}
+                      onChange={() => toggleName(member.name)}
+                    />
+                    <span className="admin-member-name">{member.name}</span>
+                    <span className="admin-member-meta">
+                      {member.gender === '남' ? '남' : '여'} · {member.type === '기존' ? '기존부원' : '신입'}
+                    </span>
+                  </label>
+                );
+              })
+            )}
           </div>
           <label htmlFor="place-input" className="admin-label">운동 장소 (직접 입력 가능)</label>
           <input
@@ -428,6 +444,23 @@ const AttendanceAdmin: React.FC = () => {
           display: flex;
           flex-direction: column;
           gap: 0.1rem;
+        }
+        .admin-loading {
+          min-height: 180px;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+        }
+        .admin-spinner {
+          width: 28px;
+          height: 28px;
+          border-radius: 999px;
+          border: 3px solid rgba(179,179,179,0.35);
+          border-top-color: ${COLORS.primary};
+          animation: adminSpin 0.9s linear infinite;
+        }
+        @keyframes adminSpin {
+          to { transform: rotate(360deg); }
         }
         .admin-member-item {
           display: flex;

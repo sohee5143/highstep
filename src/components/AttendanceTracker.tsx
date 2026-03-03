@@ -22,18 +22,30 @@ const AttendanceTracker: React.FC = () => {
     const [allRecords, setAllRecords] = useState<AttendanceRecord[]>([]);
     const [dbMemberNames, setDbMemberNames] = useState<string[]>([]);
     const [places, setPlaces] = useState<PlaceInfo[]>([]);
+    const [isLoading, setIsLoading] = useState(true);
 
     useEffect(() => {
+        let cancelled = false;
         const load = async () => {
-            const data = await fetchAttendanceSummary();
-            setAllRecords(data);
-            setDbMemberNames(data.map((r) => r.name));
+            setIsLoading(true);
+            try {
+                const data = await fetchAttendanceSummary();
+                if (cancelled) return;
+                setAllRecords(data);
+                setDbMemberNames(data.map((r) => r.name));
 
-            const placeInfos = await fetchPlacesForCurrentSeason();
-            setPlaces(placeInfos);
+                const placeInfos = await fetchPlacesForCurrentSeason();
+                if (cancelled) return;
+                setPlaces(placeInfos);
+            } finally {
+                if (!cancelled) setIsLoading(false);
+            }
         };
 
         load();
+        return () => {
+            cancelled = true;
+        };
     }, []);
 
     const handleNameChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -57,6 +69,7 @@ const AttendanceTracker: React.FC = () => {
     };
 
     const handleSearch = () => {
+        if (isLoading) return;
         const found = allRecords.find((r) => r.name === inputName.trim());
         setRecord(found || null);
         setSuggestions([]);
@@ -121,8 +134,14 @@ const AttendanceTracker: React.FC = () => {
                                 onClick={handleSearch}
                                 aria-label="조회"
                                 className="tracker-btn"
+                                disabled={isLoading}
                             >조회</button>
                         </div>
+                        {isLoading && (
+                            <div className="tracker-loading" aria-label="데이터 로딩 중">
+                                <div className="tracker-spinner" />
+                            </div>
+                        )}
                         {suggestions.length > 0 && (
                             <ul className="tracker-suggestions">
                                 {suggestions.map((name) => (
@@ -208,7 +227,7 @@ const AttendanceTracker: React.FC = () => {
                             </div>
 
                         </div>
-                    ) : inputName ? (
+                    ) : !isLoading && inputName ? (
                         <div className="tracker-card tracker-error-card">
                             <span className="tracker-error-title">😕 해당 이름의 출석 기록이 없습니다</span>
                             <span className="tracker-error-desc">이름을 정확히 입력해주세요</span>
@@ -315,6 +334,30 @@ const AttendanceTracker: React.FC = () => {
                     .tracker-btn:active {
                         background: #C8922E;
                         transform: scale(0.98);
+                    }
+                    .tracker-btn:disabled {
+                        opacity: 0.75;
+                        cursor: not-allowed;
+                    }
+                    .tracker-btn:disabled:active {
+                        background: ${COLORS.primary};
+                        transform: none;
+                    }
+                    .tracker-loading {
+                        display: flex;
+                        justify-content: center;
+                        padding: 0.2rem 0 0.6rem 0;
+                    }
+                    .tracker-spinner {
+                        width: 22px;
+                        height: 22px;
+                        border-radius: 999px;
+                        border: 3px solid rgba(179,179,179,0.35);
+                        border-top-color: ${COLORS.primary};
+                        animation: trackerSpin 0.9s linear infinite;
+                    }
+                    @keyframes trackerSpin {
+                        to { transform: rotate(360deg); }
                     }
                     .tracker-result-card {
                         gap: 1.2rem;
