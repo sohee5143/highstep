@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { AttendanceRecord, PLACES } from '../types';
+import { AttendanceRecord, PLACES, PLACE_DATES_FEB } from '../types';
 import { getSummaryForName } from '../utils/localAttendance';
 
 const COLORS = {
@@ -11,18 +11,6 @@ const COLORS = {
     textSub: '#B3B3B3',
     success: '#22C55E',
     danger: '#EF4444',
-};
-
-const PLACE_DATES_FEB: Record<string, string> = {
-    '강동 알레': '2/2',
-    '신환회(종숲)': '2/7',
-    '강남 클팍': '2/10',
-    '성수 더클': '2/13',
-    '천호 온플릭': '2/15',
-    '수원킨디': '2/18',
-    '을지로 손상원': '2/23',
-    '이수 더클': '2/26',
-    '연남 더클': '2/28',
 };
 
 const AttendanceTracker: React.FC = () => {
