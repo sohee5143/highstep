@@ -3,12 +3,16 @@ import { HashRouter, Route, Switch } from 'react-router-dom';
 import AttendanceTracker from './components/AttendanceTracker';
 import AttendanceAdmin from './components/AttendanceAdmin';
 import AttendanceList from './components/AttendanceList';
+import AttendanceRank from './components/AttendanceRank';
 import AdminGate from './components/AdminGate';
 
 export default function AttendanceApp() {
   return (
     <HashRouter>
       <Switch>
+        <Route path="/rank">
+          <AttendanceRank />
+        </Route>
         <Route path="/list">
           <AttendanceList />
         </Route>

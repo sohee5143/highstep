@@ -235,6 +235,11 @@ const AttendanceTracker: React.FC = () => {
                     ) : null}
                 </main>
                 <div style={{ textAlign: 'center', marginBottom: '1rem', marginTop: '-0.5rem' }}>
+                    <div style={{ marginBottom: '0.35rem' }}>
+                        <a href="#/rank" style={{ color: COLORS.primary, fontSize: '0.95rem', textDecoration: 'underline', fontWeight: 700 }}>
+                            출석 랭킹 보기
+                        </a>
+                    </div>
                     <a href="#/list" style={{ color: COLORS.textSub, fontSize: '0.9rem', textDecoration: 'underline' }}>
                         전체 정기운동 출석 현황 보기
                     </a>

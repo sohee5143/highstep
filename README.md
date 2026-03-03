@@ -28,6 +28,11 @@ REACT_APP_SUPABASE_ANON_KEY=...
 REACT_APP_ADMIN_PIN=1234
 ```
 
+주의:
+
+- CRA 환경변수는 반드시 `REACT_APP_` prefix가 있어야 브라우저에 주입됩니다.
+- `REACT_APP_ADMIN_PIN`이 없으면 `/admin`에서 “비밀번호가 설정되지 않았습니다” 화면이 뜹니다.
+
 ### 3) 실행
 
 ```bash
@@ -56,4 +61,5 @@ npm run build
    - `id`(있다면), `member_id`, `session_id`, `kind`
 
 현재 시즌 값은 [src/types/index.ts](src/types/index.ts)에 있는 `CURRENT_SEASON`(예: `2026-1`)과 `sessions.season`을 매칭해서 장소 목록을 구성합니다.
+
 
