@@ -367,6 +367,12 @@ const AttendanceAdmin: React.FC = () => {
           </div>
         )}
       </main>
+
+      <footer className="admin-footer" aria-label="페이지 하단">
+        <Link to="/" className="admin-nav-btn" aria-label="홈으로 돌아가기">
+          홈으로 돌아가기
+        </Link>
+      </footer>
       {/* 스타일 */}
       <style>{`
         .admin-root {
@@ -375,6 +381,8 @@ const AttendanceAdmin: React.FC = () => {
           display: flex;
           flex-direction: column;
           font-family: 'Pretendard', -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen', sans-serif;
+          letter-spacing: -0.01em;
+          line-height: 1.45;
         }
         .admin-header {
           padding: 2rem 0 1rem 0;
@@ -415,6 +423,23 @@ const AttendanceAdmin: React.FC = () => {
           flex-direction: column;
           gap: 1.5rem;
           align-items: center;
+        }
+        .admin-footer {
+          width: 100%;
+          display: flex;
+          justify-content: center;
+          padding: 0 0.5rem 1.25rem 0.5rem;
+          box-sizing: border-box;
+        }
+        .admin-home-btn {
+          display: inline-block;
+          color: ${COLORS.textSub};
+          font-size: 0.9rem;
+          text-decoration: underline;
+          font-weight: 600;
+        }
+        .admin-home-btn:hover {
+          color: ${COLORS.textMain};
         }
         .admin-card {
           background: ${COLORS.cardBg};
@@ -549,11 +574,6 @@ const AttendanceAdmin: React.FC = () => {
         }
         .admin-list-items {
           display: flex;
-          flex-direction: column;
-          gap: 0.5rem;
-        }
-        .admin-list-item {
-          background: #181818;
           border-radius: 8px;
           padding: 0.5rem 1rem;
           display: flex;
@@ -570,6 +590,28 @@ const AttendanceAdmin: React.FC = () => {
         }
         .admin-list-name {
           font-weight: 500;
+          flex-direction: column;
+          gap: 0.5rem;
+        }
+        .admin-list-item {
+          background: #181818;
+        .admin-nav-btn {
+          display: inline-flex;
+          justify-content: center;
+          align-items: center;
+          padding: 0.4rem 0.65rem;
+          border-radius: 12px;
+          border: 1px solid #333;
+          background: #111;
+          color: ${COLORS.textMain};
+          text-decoration: none;
+          font-weight: 500;
+          font-size: 0.86rem;
+          white-space: nowrap;
+          line-height: 1.2;
+        }
+        .admin-nav-btn:hover {
+          background: #181818;
         }
         .admin-list-place {
           color: ${COLORS.textMain};

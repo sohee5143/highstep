@@ -184,6 +184,12 @@ const AttendanceList: React.FC = () => {
           )}
         </div>
       </main>
+
+      <footer className="list-footer" aria-label="페이지 하단">
+        <Link to="/" className="list-nav-btn" aria-label="홈으로 돌아가기">
+          홈으로 돌아가기
+        </Link>
+      </footer>
       <style>{`
         .list-root {
           min-height: 100vh;
@@ -193,6 +199,8 @@ const AttendanceList: React.FC = () => {
           flex-direction: column;
           font-family: 'Pretendard', -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen', sans-serif;
           align-items: center;
+          letter-spacing: -0.01em;
+          line-height: 1.45;
         }
         .list-header {
           padding: 2rem 1rem 1rem 1rem;
@@ -200,6 +208,7 @@ const AttendanceList: React.FC = () => {
           flex-direction: column;
           align-items: center;
           gap: 0.3rem;
+          text-align: center;
         }
         .list-logo {
           width: 96px;
@@ -273,6 +282,7 @@ const AttendanceList: React.FC = () => {
           font-size: 0.75rem;
           color: ${COLORS.textSub};
         }
+
         /* 모바일 카드 레이아웃 */
         .list-card-list {
           display: none;
@@ -354,6 +364,7 @@ const AttendanceList: React.FC = () => {
           background: rgba(234,179,8,0.18);
           color: #FACC15;
         }
+
         .list-desktop-only {
           display: block;
         }
@@ -377,6 +388,34 @@ const AttendanceList: React.FC = () => {
         @keyframes listSpin {
           to { transform: rotate(360deg); }
         }
+
+        .list-footer {
+          width: 100%;
+          max-width: 960px;
+          padding: 0 1rem 1.25rem 1rem;
+          box-sizing: border-box;
+          display: flex;
+          justify-content: center;
+        }
+        .list-nav-btn {
+          display: inline-flex;
+          justify-content: center;
+          align-items: center;
+          padding: 0.4rem 0.65rem;
+          border-radius: 12px;
+          border: 1px solid #333;
+          background: #111;
+          color: ${COLORS.textMain};
+          text-decoration: none;
+          font-weight: 500;
+          font-size: 0.86rem;
+          white-space: nowrap;
+          line-height: 1.2;
+        }
+        .list-nav-btn:hover {
+          background: #181818;
+        }
+
         @media (max-width: 600px) {
           .list-title {
             font-size: 1.1rem;

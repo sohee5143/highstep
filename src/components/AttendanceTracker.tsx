@@ -234,15 +234,13 @@ const AttendanceTracker: React.FC = () => {
                         </div>
                     ) : null}
                 </main>
-                <div style={{ textAlign: 'center', marginBottom: '1rem', marginTop: '-0.5rem' }}>
-                    <div style={{ marginBottom: '0.35rem' }}>
-                        <a href="#/rank" style={{ color: COLORS.primary, fontSize: '0.95rem', textDecoration: 'underline', fontWeight: 700 }}>
-                            출석 랭킹 보기
-                        </a>
-                    </div>
-                    <a href="#/list" style={{ color: COLORS.textSub, fontSize: '0.9rem', textDecoration: 'underline' }}>
+                <div className="tracker-nav" aria-label="페이지 이동">
+                    <Link to="/rank" className="tracker-nav-btn tracker-nav-btn-rank" aria-label="출석 랭킹 보기">
+                        출석 랭킹 보기
+                    </Link>
+                    <Link to="/list" className="tracker-nav-btn tracker-nav-btn-list" aria-label="전체 정기운동 출석 현황 보기">
                         전체 정기운동 출석 현황 보기
-                    </a>
+                    </Link>
                 </div>
                 {/* 스타일 */}
                 <style>{`
@@ -252,6 +250,8 @@ const AttendanceTracker: React.FC = () => {
                         display: flex;
                         flex-direction: column;
                         font-family: 'Pretendard', -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen', sans-serif;
+                        letter-spacing: -0.01em;
+                        line-height: 1.45;
                     }
                     .tracker-header {
                         padding: 2rem 0 1rem 0;
@@ -264,6 +264,64 @@ const AttendanceTracker: React.FC = () => {
                         width: 96px;
                         height: auto;
                         display: block;
+                    }
+                    .tracker-nav {
+                        display: flex;
+                        justify-content: center;
+                        gap: 0.6rem;
+                        flex-wrap: wrap;
+                        padding: 0 1rem 1.25rem 1rem;
+                        margin-top: -0.35rem;
+                        width: 100%;
+                        box-sizing: border-box;
+                    }
+                    .tracker-nav-btn {
+                        display: inline-flex;
+                        align-items: center;
+                        justify-content: center;
+                        padding: 0.4rem 0.65rem;
+                        border-radius: 12px;
+                        border: 1px solid #333;
+                        background: #111;
+                        color: ${COLORS.textMain};
+                        text-decoration: none;
+                        font-size: 0.86rem;
+                        font-weight: 500;
+                        white-space: nowrap;
+                        line-height: 1.2;
+                    }
+                    .tracker-nav-btn:hover {
+                        background: #181818;
+                    }
+                    .tracker-nav-btn-rank {
+                        border-color: rgba(227,176,75,0.7);
+                        background: rgba(227,176,75,0.16);
+                        color: ${COLORS.textMain};
+                    }
+                    .tracker-nav-btn-rank:hover {
+                        background: rgba(227,176,75,0.22);
+                    }
+                    .tracker-nav-btn-list {
+                        border-color: #333;
+                        background: #111;
+                        color: ${COLORS.textMain};
+                    }
+                    @media (max-width: 600px) {
+                        .tracker-nav {
+                            flex-direction: column;
+                            align-items: stretch;
+                            gap: 0.5rem;
+                            padding-left: 1rem;
+                            padding-right: 1rem;
+                        }
+                        .tracker-nav-btn {
+                            width: 100%;
+                            max-width: 480px;
+                            margin: 0 auto;
+                            padding: 0.62rem 0.85rem;
+                            font-size: 0.92rem;
+                            font-weight: 500;
+                        }
                     }
                     .tracker-status {
                         display: flex;

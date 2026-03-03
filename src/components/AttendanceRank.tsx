@@ -56,8 +56,6 @@ const PodiumColumn: React.FC<{
   rank: 1 | 2 | 3;
   items: RankedRecord[];
 }> = ({ rank, items }) => {
-  const [expanded, setExpanded] = useState(false);
-
   const slotClass =
     rank === 1
       ? 'rank-podium-slot is-first'
@@ -73,54 +71,35 @@ const PodiumColumn: React.FC<{
         : 'rank-podium-stand rank-podium-stand-third';
 
   const countLabel = items.length > 0 ? items[0].effectiveAttendanceCount : null;
-  const visible = items.slice(0, 3);
-  const hidden = items.slice(3);
-  const namesClass = expanded ? 'rank-podium-names is-expanded' : 'rank-podium-names';
 
   return (
     <div className={slotClass} aria-label={`${rank}위`}>
       <div className="rank-podium-person">
         <div className="rank-podium-badge" aria-hidden="true">{rank}</div>
-          <div className={namesClass} aria-label={`${rank}위 명단`}>
+        <div className="rank-podium-names" aria-label={`${rank}위 명단`}>
           {items.length === 0 ? (
             <div className="rank-podium-empty">-</div>
-          ) : (
+          ) : items.length === 1 ? (
+            <div className="rank-podium-name">{items[0].name}</div>
+          ) : items.length === 2 ? (
             <>
-              {visible.map((r) => (
-                <div key={r.name} className="rank-podium-name">
-                  {r.name}
-                </div>
-              ))}
-
-              {hidden.length > 0 && !expanded && (
-                <button
-                  type="button"
-                  className="rank-more-btn"
-                  onClick={() => setExpanded(true)}
-                  aria-label={`${rank}위 추가 인원 보기`}
-                >
-                  +{hidden.length}명
-                </button>
-              )}
-
-              {hidden.length > 0 && expanded && (
-                <>
-                  {hidden.map((r) => (
-                    <div key={r.name} className="rank-podium-name rank-podium-name-more">
-                      {r.name}
-                    </div>
-                  ))}
-                  <button
-                    type="button"
-                    className="rank-more-btn"
-                    onClick={() => setExpanded(false)}
-                    aria-label={`${rank}위 명단 접기`}
-                  >
-                    접기
-                  </button>
-                </>
-              )}
+              <div className="rank-podium-name">{items[0].name}</div>
+              <div className="rank-podium-name">{items[1].name}</div>
             </>
+          ) : (
+            <details className="rank-podium-ties">
+              <summary className="rank-podium-tie-summary" aria-label={`${rank}위 동률 명단 펼치기`}>
+                <span className="rank-podium-tie-main">{items[0].name}</span>
+                <span className="rank-podium-tie-rest">{` 외 ${items.length - 1}명`}</span>
+              </summary>
+              <div className="rank-podium-tie-list" role="list" aria-label={`${rank}위 동률 전체 명단`}>
+                {items.map((r) => (
+                  <div key={r.name} className="rank-podium-name" role="listitem">
+                    {r.name}
+                  </div>
+                ))}
+              </div>
+            </details>
           )}
         </div>
         <div className="rank-podium-count">{countLabel !== null ? `출석 ${countLabel}회` : ''}</div>
@@ -208,13 +187,12 @@ const AttendanceRank: React.FC = () => {
                 <div>
                   <div className="rank-card-title-row">
                     <div className="rank-card-title">출석왕 TOP 3</div>
-                    <span
-                      className="rank-info"
-                      title="동률은 공동 순위로 표시됩니다 (예: 1, 1, 1, 4…)"
-                      aria-label="동률 안내"
-                    >
-                      ⓘ
-                    </span>
+                    <details className="rank-info">
+                      <summary aria-label="동률 안내">ⓘ</summary>
+                      <div className="rank-tooltip" role="note">
+                        동률은 공동 순위로 표시됩니다.
+                      </div>
+                    </details>
                   </div>
                 </div>
                 <Link to="/list" className="rank-link" aria-label="전체 출석현황 보기">
@@ -248,6 +226,12 @@ const AttendanceRank: React.FC = () => {
         </div>
       </main>
 
+      <footer className="rank-footer" aria-label="페이지 하단">
+        <Link to="/" className="rank-nav-btn" aria-label="홈으로 돌아가기">
+          홈으로 돌아가기
+        </Link>
+      </footer>
+
       <style>{`
         .rank-root {
           min-height: 100vh;
@@ -257,6 +241,8 @@ const AttendanceRank: React.FC = () => {
           flex-direction: column;
           font-family: 'Pretendard', -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen', sans-serif;
           align-items: center;
+          letter-spacing: -0.01em;
+          line-height: 1.45;
         }
         .rank-header {
           padding: 2rem 1rem 1rem 1rem;
@@ -276,17 +262,55 @@ const AttendanceRank: React.FC = () => {
           font-weight: bold;
           color: ${COLORS.primary};
           margin: 0;
+          line-height: 1.25;
         }
         .rank-desc {
           font-size: 0.95rem;
           color: ${COLORS.textSub};
           margin: 0;
+          line-height: 1.35;
         }
         .rank-main {
           width: 100%;
           max-width: 960px;
           padding: 1rem;
           box-sizing: border-box;
+        }
+        .rank-footer {
+          width: 100%;
+          max-width: 960px;
+          padding: 0 1rem 1.25rem 1rem;
+          box-sizing: border-box;
+          display: flex;
+          justify-content: center;
+        }
+        .rank-home-btn {
+          display: inline-block;
+          color: ${COLORS.textSub};
+          font-size: 0.9rem;
+          text-decoration: underline;
+          font-weight: 600;
+        }
+        .rank-home-btn:hover {
+          color: ${COLORS.textMain};
+        }
+        .rank-nav-btn {
+          display: inline-flex;
+          justify-content: center;
+          align-items: center;
+          padding: 0.4rem 0.65rem;
+          border-radius: 12px;
+          border: 1px solid #333;
+          background: #111;
+          color: ${COLORS.textMain};
+          text-decoration: none;
+          font-weight: 500;
+          font-size: 0.86rem;
+          white-space: nowrap;
+          line-height: 1.2;
+        }
+        .rank-nav-btn:hover {
+          background: #181818;
         }
         .rank-card {
           background: ${COLORS.cardBg};
@@ -311,13 +335,40 @@ const AttendanceRank: React.FC = () => {
           font-size: 1.1rem;
           font-weight: 800;
           color: ${COLORS.primary};
+          line-height: 1.25;
         }
         .rank-info {
-          font-size: 0.85rem;
+          position: relative;
           color: ${COLORS.textSub};
-          cursor: help;
+          cursor: pointer;
           user-select: none;
           line-height: 1;
+        }
+        .rank-info > summary {
+          list-style: none;
+          outline: none;
+        }
+        .rank-info summary::-webkit-details-marker {
+          display: none;
+        }
+        .rank-tooltip {
+          position: absolute;
+          top: 1.6rem;
+          left: 50%;
+          transform: translateX(-50%);
+          width: max-content;
+          max-width: 260px;
+          padding: 0.55rem 0.6rem;
+          border-radius: 12px;
+          border: 1px solid #333;
+          background: #111;
+          color: ${COLORS.textSub};
+          font-size: 0.82rem;
+          line-height: 1.35;
+          z-index: 20;
+          box-shadow: 0 10px 24px rgba(0,0,0,0.35);
+          text-align: left;
+          white-space: normal;
         }
         .rank-link {
           font-size: 0.85rem;
@@ -386,38 +437,53 @@ const AttendanceRank: React.FC = () => {
           display: flex;
           flex-direction: column;
           gap: 0.25rem;
-          min-height: 1.1rem;
-          padding: 3px 0;
+          padding: 6px 0 8px 0;
+          overflow: visible;
+          color: ${COLORS.textMain};
         }
-        .rank-podium-names.is-expanded {
-          padding-bottom: 0.4rem;
+        .rank-podium-ties {
+          margin: 0;
+        }
+        .rank-podium-ties > summary {
+          list-style: none;
+          outline: none;
+          cursor: pointer;
+          user-select: none;
+        }
+        .rank-podium-ties summary::-webkit-details-marker {
+          display: none;
+        }
+        .rank-podium-tie-summary {
+          font-weight: 800;
+          font-size: 0.95rem;
+          line-height: 1.6;
+          padding: 4px 0;
+          color: ${COLORS.textMain};
+        }
+        .rank-podium-slot.is-first .rank-podium-tie-summary {
+          font-size: 1.05rem;
+        }
+        .rank-podium-tie-rest {
+          font-weight: 700;
+          color: ${COLORS.textSub};
+        }
+        .rank-podium-tie-list {
+          margin-top: 0.35rem;
+          padding-top: 0.35rem;
+          border-top: 1px solid #2a2a2a;
+          display: flex;
+          flex-direction: column;
+          gap: 0.15rem;
         }
         .rank-podium-name {
           display: block;
           font-weight: 800;
           font-size: 0.95rem;
-          line-height: 1.5;
-          padding: 2px 0;
-          overflow: hidden;
-          text-overflow: ellipsis;
-          white-space: nowrap;
-        }
-        .rank-podium-name-more {
-          font-weight: 700;
-        }
-        .rank-more-btn {
-          width: 100%;
-          border: 1px solid #333;
-          background: transparent;
-          color: ${COLORS.textSub};
-          border-radius: 10px;
-          padding: 0.25rem 0.35rem;
-          font-size: 0.85rem;
-          font-weight: 800;
-          cursor: pointer;
-        }
-        .rank-more-btn:hover {
-          background: #181818;
+          line-height: 1.6;
+          padding: 4px 0;
+          color: ${COLORS.textMain};
+          white-space: normal;
+          word-break: keep-all;
         }
         .rank-podium-empty {
           color: ${COLORS.textSub};
@@ -428,6 +494,7 @@ const AttendanceRank: React.FC = () => {
           padding-top: 0.6rem;
           font-size: 0.82rem;
           color: ${COLORS.textSub};
+          line-height: 1.35;
         }
         .rank-podium-stand {
           border-radius: 12px;
@@ -478,17 +545,20 @@ const AttendanceRank: React.FC = () => {
           text-align: center;
           font-weight: 900;
           color: ${COLORS.primary};
+          line-height: 1.1;
         }
         .rank-name {
           font-weight: 700;
           overflow: hidden;
           text-overflow: ellipsis;
           white-space: nowrap;
+          line-height: 1.3;
         }
         .rank-right {
           font-variant-numeric: tabular-nums;
           font-weight: 800;
           color: ${COLORS.textMain};
+          line-height: 1.2;
         }
         .rank-empty {
           padding: 0.75rem 0.5rem;
@@ -525,6 +595,18 @@ const AttendanceRank: React.FC = () => {
           .rank-card-header {
             align-items: flex-start;
             flex-direction: column;
+          }
+          .rank-footer {
+            padding-left: 1rem;
+            padding-right: 1rem;
+          }
+          .rank-nav-btn {
+            width: 100%;
+            max-width: 480px;
+            margin: 0 auto;
+            padding: 0.62rem 0.85rem;
+            font-size: 0.92rem;
+            font-weight: 500;
           }
           .rank-podium {
             gap: 0.45rem;
