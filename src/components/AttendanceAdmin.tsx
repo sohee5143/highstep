@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { PLACES } from '../types';
 import { addCheck, removeCheck } from '../utils/localAttendance';
+import { supabase } from '../utils/supabaseClient';
 
 const COLORS = {
   primary: '#E3B04B',
@@ -38,14 +39,17 @@ const AttendanceAdmin: React.FC = () => {
     const timer = setInterval(() => setCurrentTime(new Date()), 1000);
 
     const fetchMembers = async () => {
-      try {
-        const res = await fetch('http://localhost:4000/api/members');
-        if (!res.ok) return;
-        const data: Member[] = await res.json();
-        setMembers(data);
-      } catch (err) {
-        console.error('members load failed', err);
+      const { data, error } = await supabase
+        .from<Member>('members')
+        .select('id, name, type, gender')
+        .order('name', { ascending: true });
+
+      if (error) {
+        console.error('members load failed', error);
+        return;
       }
+
+      setMembers(data || []);
     };
 
     fetchMembers();
@@ -78,17 +82,69 @@ const AttendanceAdmin: React.FC = () => {
     // localStorage에도 저장하여 다른 화면에서도 반영되도록 함 (DB 이전 기록 호환)
     newCheckedList.forEach((c) => addCheck(c));
 
-    // 서버(API)를 통해 공식 출석 기록 저장
     try {
-      await fetch('http://localhost:4000/api/admin/checkins', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          names: selectedNames,
-          place: selectedPlace,
-          timestamp: now,
-        }),
-      });
+      const ts = new Date(now);
+      const isoDate = ts.toISOString().slice(0, 10);
+
+      const { data: members, error: membersError } = await supabase
+        .from<Member>('members')
+        .select('id, name')
+        .in('name', selectedNames);
+
+      if (membersError || !members) {
+        console.error('admin.checkins members 조회 실패', membersError);
+        throw membersError;
+      }
+
+      let sessionId: number | null = null;
+      const { data: existingSessions, error: sessionError } = await supabase
+        .from<{ id: number }>('sessions')
+        .select('id')
+        .eq('date', isoDate)
+        .eq('place', selectedPlace)
+        .limit(1);
+
+      if (!sessionError && existingSessions && existingSessions.length > 0) {
+        sessionId = existingSessions[0].id;
+      } else {
+        const { data: newSession, error: newSessionError } = await supabase
+          .from<{ id: number }>('sessions')
+          .insert([{ date: isoDate, place: selectedPlace, season: '2026-1' }])
+          .select('id')
+          .single();
+
+        if (newSessionError || !newSession) {
+          console.error('admin.checkins session 생성 실패', newSessionError);
+          throw newSessionError;
+        }
+
+        sessionId = newSession.id;
+      }
+
+      for (const m of members) {
+        const memberId = m.id;
+        const { data: existingChecks, error: existingCheckError } = await supabase
+          .from<{ id: number }>('checkins')
+          .select('id')
+          .eq('member_id', memberId)
+          .eq('session_id', sessionId)
+          .limit(1);
+
+        if (existingCheckError) {
+          console.error('admin.checkins checkins 조회 실패', existingCheckError);
+          continue;
+        }
+
+        if (!existingChecks || existingChecks.length === 0) {
+          const { error: checkinError } = await supabase
+            .from('checkins')
+            .insert([{ member_id: memberId, session_id: sessionId }]);
+
+          if (checkinError) {
+            console.error('admin.checkins insert 실패', checkinError);
+          }
+        }
+      }
     } catch (err) {
       console.error('admin checkin error', err);
     }
@@ -221,17 +277,46 @@ const AttendanceAdmin: React.FC = () => {
                       // localStorage에서 제거 (JSON-only/과거 데이터용)
                       removeCheck(member);
 
-                      // 서버(API)를 통해 출석 취소
                       try {
-                        await fetch('http://localhost:4000/api/admin/checkins', {
-                          method: 'DELETE',
-                          headers: { 'Content-Type': 'application/json' },
-                          body: JSON.stringify({
-                            name: member.name,
-                            place: member.place,
-                            timestamp: member.timestamp,
-                          }),
-                        });
+                        const ts = new Date(member.timestamp);
+                        const isoDate = ts.toISOString().slice(0, 10);
+
+                        const { data: dbMember, error: memberError } = await supabase
+                          .from<Member>('members')
+                          .select('id')
+                          .eq('name', member.name)
+                          .limit(1);
+
+                        if (memberError || !dbMember || !dbMember.length) {
+                          console.error('admin.checkins delete members 조회 실패', memberError);
+                          return;
+                        }
+
+                        const memberId = dbMember[0].id;
+
+                        const { data: sessions, error: sessionError } = await supabase
+                          .from<{ id: number }>('sessions')
+                          .select('id')
+                          .eq('date', isoDate)
+                          .eq('place', member.place)
+                          .limit(1);
+
+                        if (sessionError || !sessions || !sessions.length) {
+                          console.error('admin.checkins delete sessions 조회 실패', sessionError);
+                          return;
+                        }
+
+                        const sessionId = sessions[0].id;
+
+                        const { error: deleteError } = await supabase
+                          .from('checkins')
+                          .delete()
+                          .eq('member_id', memberId)
+                          .eq('session_id', sessionId);
+
+                        if (deleteError) {
+                          console.error('admin.checkins delete 실패', deleteError);
+                        }
                       } catch (err) {
                         console.error('admin checkin delete error', err);
                       }

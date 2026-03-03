@@ -1,7 +1,8 @@
 import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { AttendanceRecord, PLACES, PLACE_DATES_FEB } from '../types';
+import { AttendanceRecord, PLACES } from '../types';
 import { loadAllChecks } from '../utils/localAttendance';
+import { fetchAttendanceSummary } from '../utils/attendanceSummary';
 
 const COLORS = {
   primary: '#E3B04B',
@@ -9,6 +10,18 @@ const COLORS = {
   cardBg: '#1A1A1A',
   textMain: '#FFFFFF',
   textSub: '#B3B3B3',
+};
+
+const PLACE_DATES_FEB: Record<string, string> = {
+  '강동 알레': '2/2',
+  '신환회(종숲)': '2/7',
+  '강남 클팍': '2/10',
+  '성수 더클': '2/13',
+  '천호 온플릭': '2/15',
+  '수원킨디': '2/18',
+  '을지로 손상원': '2/23',
+  '이수 더클': '2/26',
+  '연남 더클': '2/28',
 };
 
 const AttendanceList: React.FC = () => {
@@ -24,16 +37,9 @@ const AttendanceList: React.FC = () => {
 
   useEffect(() => {
     const fetchSummary = async () => {
-      try {
-        const res = await fetch('http://localhost:4000/api/attendance-summary');
-        if (!res.ok) return;
-        const data: AttendanceRecord[] = await res.json();
-
-        setRecords(data);
-        setDbMemberNames(data.map((r) => r.name));
-      } catch {
-        // 서버 문제 시 조용히 빈 상태 유지
-      }
+      const data = await fetchAttendanceSummary();
+      setRecords(data);
+      setDbMemberNames(data.map((r) => r.name));
     };
 
     fetchSummary();
