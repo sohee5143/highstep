@@ -2,7 +2,6 @@ import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { PLACES } from '../types';
 import { addCheck, removeCheck } from '../utils/localAttendance';
-import { supabase } from '../utils/supabaseClient';
 
 const COLORS = {
   primary: '#E3B04B',
@@ -40,16 +39,12 @@ const AttendanceAdmin: React.FC = () => {
 
     const fetchMembers = async () => {
       try {
-        const { data, error } = await supabase
-          .from('members')
-          .select('id, name, type, gender')
-          .order('name', { ascending: true });
-
-        if (!error && data) {
-          setMembers(data as Member[]);
-        }
+        const res = await fetch('http://localhost:4000/api/members');
+        if (!res.ok) return;
+        const data: Member[] = await res.json();
+        setMembers(data);
       } catch (err) {
-        console.error('Supabase members load failed', err);
+        console.error('members load failed', err);
       }
     };
 
@@ -83,84 +78,19 @@ const AttendanceAdmin: React.FC = () => {
     // localStorage에도 저장하여 다른 화면에서도 반영되도록 함 (DB 이전 기록 호환)
     newCheckedList.forEach((c) => addCheck(c));
 
-    // Supabase에 공식 출석 기록 저장
+    // 서버(API)를 통해 공식 출석 기록 저장
     try {
-      const ts = new Date(now);
-      const isoDate = ts.toISOString().slice(0, 10); // YYYY-MM-DD
-
-      // 1) 선택된 이름들로 members 조회
-      const { data: members, error: membersError } = await supabase
-        .from('members')
-        .select('id, name')
-        .in('name', selectedNames);
-
-      if (!members || membersError) {
-        console.error('Supabase members lookup failed', membersError);
-      } else {
-        // 2) 오늘 날짜 + 장소에 해당하는 session 찾기 또는 생성
-        let sessionId: number | null = null;
-        const { data: existingSessions, error: sessionError } = await supabase
-          .from('sessions')
-          .select('id')
-          .eq('date', isoDate)
-          .eq('place', selectedPlace)
-          .limit(1);
-
-        if (!sessionError && existingSessions && existingSessions.length > 0) {
-          sessionId = existingSessions[0].id as number;
-        } else {
-          const { data: newSession, error: newSessionError } = await supabase
-            .from('sessions')
-            .insert([
-              {
-                date: isoDate,
-                place: selectedPlace,
-                season: '2026-1',
-              },
-            ]);
-
-          if (!newSession || newSessionError) {
-            console.error('Supabase session insert failed', newSessionError);
-          } else {
-            sessionId = (newSession as any).id as number;
-          }
-        }
-
-        if (sessionId) {
-          // 3) 각 멤버에 대해 이미 동일 member/session 출석이 있는지 확인 후 없으면 insert
-          for (const m of members as any[]) {
-            const memberId = m.id as number;
-            const { data: existingChecks, error: existingCheckError } = await supabase
-              .from('checkins')
-              .select('id')
-              .eq('member_id', memberId)
-              .eq('session_id', sessionId)
-              .limit(1);
-
-            if (existingCheckError) {
-              console.error('Supabase checkins lookup failed', existingCheckError);
-              continue;
-            }
-
-            if (!existingChecks || existingChecks.length === 0) {
-              const { error: checkinError } = await supabase
-                .from('checkins')
-                .insert([
-                  {
-                    member_id: memberId,
-                    session_id: sessionId,
-                  },
-                ]);
-
-              if (checkinError) {
-                console.error('Supabase checkin insert failed', checkinError);
-              }
-            }
-          }
-        }
-      }
+      await fetch('http://localhost:4000/api/admin/checkins', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          names: selectedNames,
+          place: selectedPlace,
+          timestamp: now,
+        }),
+      });
     } catch (err) {
-      console.error('Supabase checkin error', err);
+      console.error('admin checkin error', err);
     }
 
     // Reset selections
@@ -291,38 +221,19 @@ const AttendanceAdmin: React.FC = () => {
                       // localStorage에서 제거 (JSON-only/과거 데이터용)
                       removeCheck(member);
 
-                      // Supabase에서도 가능하면 삭제
+                      // 서버(API)를 통해 출석 취소
                       try {
-                        const ts = new Date(member.timestamp);
-                        const isoDate = ts.toISOString().slice(0, 10);
-
-                        const { data: dbMember, error: memberError } = await supabase
-                          .from('members')
-                          .select('id')
-                          .eq('name', member.name)
-                          .limit(1);
-
-                        if (!memberError && dbMember && (dbMember as any[]).length > 0) {
-                          const memberId = (dbMember as any[])[0].id as number;
-
-                          const { data: sessions, error: sessionError } = await supabase
-                            .from('sessions')
-                            .select('id')
-                            .eq('date', isoDate)
-                            .eq('place', member.place)
-                            .limit(1);
-
-                          if (!sessionError && sessions && sessions.length > 0) {
-                            const sessionId = sessions[0].id as number;
-                            await supabase
-                              .from('checkins')
-                              .delete()
-                              .eq('member_id', memberId)
-                              .eq('session_id', sessionId);
-                          }
-                        }
+                        await fetch('http://localhost:4000/api/admin/checkins', {
+                          method: 'DELETE',
+                          headers: { 'Content-Type': 'application/json' },
+                          body: JSON.stringify({
+                            name: member.name,
+                            place: member.place,
+                            timestamp: member.timestamp,
+                          }),
+                        });
                       } catch (err) {
-                        console.error('Supabase checkin delete error', err);
+                        console.error('admin checkin delete error', err);
                       }
                     }}
                   >

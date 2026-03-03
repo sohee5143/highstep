@@ -2,7 +2,6 @@ import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { AttendanceRecord, PLACES } from '../types';
 import { loadAllChecks } from '../utils/localAttendance';
-import { supabase } from '../utils/supabaseClient';
 
 const COLORS = {
   primary: '#E3B04B',
@@ -36,77 +35,20 @@ const AttendanceList: React.FC = () => {
   });
 
   useEffect(() => {
-    const fetchMembers = async () => {
+    const fetchSummary = async () => {
       try {
-        const { data: members, error } = await supabase
-          .from('members')
-          .select('id, name, type, gender, required_attendance, base_attendance_count, status');
+        const res = await fetch('http://localhost:4000/api/attendance-summary');
+        if (!res.ok) return;
+        const data: AttendanceRecord[] = await res.json();
 
-        if (error || !members || members.length === 0) return;
-
-        const { data: checkins, error: checkinsError } = await supabase
-          .from('checkins')
-          .select('member_id, session_id, kind');
-
-        const { data: sessions, error: sessionsError } = await supabase
-          .from('sessions')
-          .select('id, place');
-
-        const sessionPlaceById: Record<number, string> = {};
-        if (!sessionsError && sessions) {
-          (sessions as any[]).forEach((s) => {
-            sessionPlaceById[s.id as number] = s.place as string;
-          });
-        }
-
-        const extraByMemberId: Record<number, number> = {};
-        const perMemberPlace: Record<number, Record<string, number | string>> = {};
-        if (!checkinsError && checkins) {
-          (checkins as any[]).forEach((c) => {
-            const mid = c.member_id as number;
-            const sid = c.session_id as number;
-            const place = sessionPlaceById[sid];
-            const kind = (c as any).kind as string | null;
-            if (place) {
-              if (!perMemberPlace[mid]) perMemberPlace[mid] = {};
-              if (kind === '25분기 반영') {
-                // 25분기 반영은 출석 횟수에는 포함하지 않고 문자열로만 표시
-                perMemberPlace[mid][place] = '25분기 반영';
-              } else {
-                extraByMemberId[mid] = (extraByMemberId[mid] || 0) + 1;
-                if (perMemberPlace[mid][place] !== '25분기 반영') {
-                  perMemberPlace[mid][place] = 1;
-                }
-              }
-            }
-          });
-        }
-        const merged: AttendanceRecord[] = (members as any[]).map((m) => {
-          const mid = m.id as number;
-          const baseAttendance = m.base_attendance_count ?? 0;
-          const extraDb = extraByMemberId[mid] || 0;
-          return {
-            type: m.type ?? '',
-            gender: m.gender ?? '',
-            name: m.name,
-            requiredAttendance: m.required_attendance ?? 0,
-            attendanceCount: baseAttendance + extraDb,
-            status: m.status ?? 'X',
-            records: perMemberPlace[mid] ?? {},
-          } as AttendanceRecord;
-        });
-
-        // 이름 가나다순 정렬
-        merged.sort((a, b) => a.name.localeCompare(b.name, 'ko-KR'));
-
-        setRecords(merged);
-        setDbMemberNames(members.map((m: any) => m.name as string));
+        setRecords(data);
+        setDbMemberNames(data.map((r) => r.name));
       } catch {
-        // DB 문제 시 조용히 빈 상태 유지
+        // 서버 문제 시 조용히 빈 상태 유지
       }
     };
 
-    fetchMembers();
+    fetchSummary();
   }, []);
 
   return (
