@@ -1,68 +1,59 @@
 # highstep-app
 
-## Overview
-The **highstep-app** is a React application designed for tracking attendance and integrating with Google Spreadsheets. This application allows users to mark attendance, view records, and manage data seamlessly with Google Sheets.
+하이스텝(HighStep) 클라이밍 동아리의 출석 현황을 조회하고, 관리자가 출석 체크를 기록할 수 있는 React 앱입니다.
 
-## Features
-- Attendance tracking functionality
-- Integration with Google Spreadsheets for data management
-- User-friendly interface for managing attendance records
+## 기술 스택
 
-## Project Structure
-```
-highstep-app
-├── src
-│   ├── App.tsx
-│   ├── components
-│   │   ├── AttendanceTracker.tsx
-│   │   └── SpreadsheetIntegration.tsx
-│   ├── hooks
-│   │   └── useGoogleSheets.ts
-│   ├── types
-│   │   └── index.ts
-│   ├── utils
-│   │   └── googleSheetsApi.ts
-│   └── index.tsx
-├── public
-│   └── index.html
-├── package.json
-├── tsconfig.json
-└── README.md
+- React 17 + TypeScript (CRA / react-scripts)
+- Supabase (DB 조회/저장)
+
+## 시작하기
+
+### 1) 설치
+
+```bash
+npm install
 ```
 
-## Getting Started
+### 2) 환경변수 설정 (프론트)
 
-### Prerequisites
-- Node.js (version 14 or higher)
-- npm (Node Package Manager)
+프로젝트 루트에 `.env.local`을 만들고 아래 값을 설정합니다.
 
-### Installation
-1. Clone the repository:
-   ```
-   git clone https://github.com/yourusername/highstep-app.git
-   ```
-2. Navigate to the project directory:
-   ```
-   cd highstep-app
-   ```
-3. Install the dependencies:
-   ```
-   npm install
-   ```
+```bash
+# Supabase (프론트에서 사용: anon key)
+REACT_APP_SUPABASE_URL=...
+REACT_APP_SUPABASE_ANON_KEY=...
 
-### Running the Application
-To start the development server, run:
+# 관리자 페이지(/#/admin) 진입 PIN
+REACT_APP_ADMIN_PIN=1234
 ```
+
+### 3) 실행
+
+```bash
 npm start
 ```
-The application will be available at `http://localhost:3000`.
 
-### Usage
-- Use the **AttendanceTracker** component to mark attendance and view records.
-- Use the **SpreadsheetIntegration** component to connect and manage data with Google Sheets.
+기본 접속: `http://localhost:3000/#/`
 
-### Contributing
-Contributions are welcome! Please open an issue or submit a pull request for any enhancements or bug fixes.
+### 4) 빌드
 
-### License
-This project is licensed under the MIT License. See the LICENSE file for details.
+```bash
+npm run build
+```
+
+`build/`가 생성됩니다.
+
+## 데이터 구성 (Supabase)
+
+프론트 코드는 아래 테이블/컬럼을 사용합니다.
+
+- `members`
+   - `id`, `name`, `type`, `gender`, `required_attendance`, `base_attendance_count`, `status`
+- `sessions`
+   - `id`, `date`, `place`, `season`
+- `checkins`
+   - `id`(있다면), `member_id`, `session_id`, `kind`
+
+현재 시즌 값은 [src/types/index.ts](src/types/index.ts)에 있는 `CURRENT_SEASON`(예: `2026-1`)과 `sessions.season`을 매칭해서 장소 목록을 구성합니다.
+
