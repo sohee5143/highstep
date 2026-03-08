@@ -12,6 +12,14 @@ export interface PlaceInfo {
   dateLabel: string | null;
 }
 
+let cachedValue: PlaceInfo[] | null = null;
+let cachedPromise: Promise<PlaceInfo[]> | null = null;
+
+export function clearPlacesCache(): void {
+  cachedValue = null;
+  cachedPromise = null;
+}
+
 function formatDateLabel(dateStr: string | null): string | null {
   if (!dateStr) return null;
   const d = new Date(dateStr);
@@ -21,7 +29,14 @@ function formatDateLabel(dateStr: string | null): string | null {
   return `${month}/${day}`;
 }
 
-export async function fetchPlacesForCurrentSeason(): Promise<PlaceInfo[]> {
+export async function fetchPlacesForCurrentSeason(options?: { useCache?: boolean }): Promise<PlaceInfo[]> {
+  const useCache = options?.useCache !== false;
+  if (useCache) {
+    if (cachedValue) return cachedValue;
+    if (cachedPromise) return cachedPromise;
+  }
+
+  const run = async (): Promise<PlaceInfo[]> => {
   const { data, error } = await supabase
     .from<DbSession>('sessions')
     .select('place, date, season')
@@ -63,5 +78,17 @@ export async function fetchPlacesForCurrentSeason(): Promise<PlaceInfo[]> {
       dateLabel: formatDateLabel(earliestDateByPlace[name] || null),
     }));
 
-  return places;
+    return places;
+  };
+
+  const p = run();
+  if (useCache) cachedPromise = p;
+
+  try {
+    const result = await p;
+    if (useCache && result.length > 0) cachedValue = result;
+    return result;
+  } finally {
+    if (useCache) cachedPromise = null;
+  }
 }

@@ -9,11 +9,5 @@ export interface AttendanceRecord {
         [place: string]: number | null | string;
     };
 }
-
-export interface SpreadsheetData {
-    range: string;
-    majorDimension: 'ROWS' | 'COLUMNS';
-    values: string[][];
-}
 // 현재 시즌 식별자 (sessions.season 컬럼과 매칭)
 export const CURRENT_SEASON = '2026-1';

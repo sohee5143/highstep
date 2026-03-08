@@ -3,14 +3,7 @@ import { Link } from 'react-router-dom';
 import { AttendanceRecord } from '../types';
 import { loadAllChecks } from '../utils/localAttendance';
 import { fetchAttendanceSummary } from '../utils/attendanceSummary';
-
-const COLORS = {
-  primary: '#E3B04B',
-  background: '#000000',
-  cardBg: '#1A1A1A',
-  textMain: '#FFFFFF',
-  textSub: '#B3B3B3',
-};
+import { COLORS } from '../constants/colors';
 
 type RankedRecord = AttendanceRecord & {
   effectiveAttendanceCount: number;

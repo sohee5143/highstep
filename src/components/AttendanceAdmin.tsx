@@ -1,17 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
+import { COLORS } from '../constants/colors';
+import { CURRENT_SEASON } from '../types';
 import { addCheck, removeCheck } from '../utils/localAttendance';
 import { supabase } from '../utils/supabaseClient';
-
-const COLORS = {
-  primary: '#E3B04B',
-  background: '#000000',
-  cardBg: '#1A1A1A',
-  textMain: '#FFFFFF',
-  textSub: '#B3B3B3',
-  success: '#22C55E',
-  danger: '#EF4444',
-};
 
 interface CheckedMember {
   name: string;
@@ -73,13 +65,12 @@ const AttendanceAdmin: React.FC = () => {
       setPlaceOptions(unique);
     };
 
-    let cancelled = false;
     const load = async () => {
       setIsLoading(true);
       try {
         await Promise.all([fetchMembers(), fetchPlaces()]);
       } finally {
-        if (!cancelled) setIsLoading(false);
+        setIsLoading(false);
       }
     };
 
@@ -140,7 +131,7 @@ const AttendanceAdmin: React.FC = () => {
       } else {
         const { data: newSession, error: newSessionError } = await supabase
           .from<{ id: number; date: string; place: string; season: string }>('sessions')
-          .insert([{ date: isoDate, place: selectedPlace, season: '2026-1' }])
+          .insert([{ date: isoDate, place: selectedPlace, season: CURRENT_SEASON }])
           .select('id')
           .single();
 

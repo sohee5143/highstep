@@ -4,14 +4,7 @@ import { AttendanceRecord } from '../types';
 import { loadAllChecks } from '../utils/localAttendance';
 import { fetchAttendanceSummary } from '../utils/attendanceSummary';
 import { fetchPlacesForCurrentSeason, PlaceInfo } from '../utils/places';
-
-const COLORS = {
-  primary: '#E3B04B',
-  background: '#000000',
-  cardBg: '#1A1A1A',
-  textMain: '#FFFFFF',
-  textSub: '#B3B3B3',
-};
+import { COLORS } from '../constants/colors';
 
 const AttendanceList: React.FC = () => {
   const checks = loadAllChecks();
@@ -31,13 +24,13 @@ const AttendanceList: React.FC = () => {
     const fetchSummary = async () => {
       setIsLoading(true);
       try {
-        const data = await fetchAttendanceSummary();
+        const [data, placeInfos] = await Promise.all([
+          fetchAttendanceSummary(),
+          fetchPlacesForCurrentSeason(),
+        ]);
         if (cancelled) return;
         setRecords(data);
         setDbMemberNames(data.map((r) => r.name));
-
-        const placeInfos = await fetchPlacesForCurrentSeason();
-        if (cancelled) return;
         setPlaces(placeInfos);
       } finally {
         if (!cancelled) setIsLoading(false);
@@ -49,6 +42,40 @@ const AttendanceList: React.FC = () => {
       cancelled = true;
     };
   }, []);
+
+  const getMonthLabel = React.useCallback((p: PlaceInfo): string => {
+    if (!p.dateLabel) return '기타';
+    const monthPart = p.dateLabel.split('/')[0];
+    const month = Number.parseInt(monthPart, 10);
+    if (!Number.isFinite(month)) return '기타';
+    return `${month}월`;
+  }, []);
+
+  const monthSegments = React.useMemo(() => {
+
+    const segments: Array<{ label: string; count: number }> = [];
+    for (const p of places) {
+      const label = getMonthLabel(p);
+      const last = segments[segments.length - 1];
+      if (!last || last.label !== label) {
+        segments.push({ label, count: 1 });
+      } else {
+        last.count += 1;
+      }
+    }
+    return segments;
+  }, [places, getMonthLabel]);
+
+  const monthBoundaryByPlace = React.useMemo(() => {
+    const map: Record<string, boolean> = {};
+    let prev: string | null = null;
+    places.forEach((p, idx) => {
+      const label = getMonthLabel(p);
+      map[p.name] = idx === 0 || label !== prev;
+      prev = label;
+    });
+    return map;
+  }, [places, getMonthLabel]);
 
   return (
     <div className="list-root">
@@ -77,12 +104,22 @@ const AttendanceList: React.FC = () => {
                 <table className="list-table">
                   <thead>
                     <tr>
-                      <th>이름</th>
-                      <th>출석횟수</th>
-                      <th>필요출석</th>
-                      <th>출석확인</th>
+                      <th rowSpan={2}>이름</th>
+                      <th rowSpan={2}>출석횟수</th>
+                      <th rowSpan={2}>필요출석</th>
+                      <th rowSpan={2}>출석확인</th>
+                      {monthSegments.map((seg) => (
+                        <th key={seg.label} colSpan={seg.count} className="list-month-header">
+                          {seg.label}
+                        </th>
+                      ))}
+                    </tr>
+                    <tr>
                       {places.map((p) => (
-                        <th key={p.name}>
+                        <th
+                          key={p.name}
+                          className={monthBoundaryByPlace[p.name] ? 'list-place-header is-boundary' : 'list-place-header'}
+                        >
                           {p.name}
                           {p.dateLabel && (
                             <span className="list-date-header"> ({p.dateLabel})</span>
@@ -109,7 +146,14 @@ const AttendanceList: React.FC = () => {
                             const value = record.records[place];
                             const display = value === 1 ? 'O' : value || '';
                             return (
-                              <td key={place} className="list-cell-center">
+                              <td
+                                key={place}
+                                className={
+                                  monthBoundaryByPlace[place]
+                                    ? 'list-cell-center is-boundary'
+                                    : 'list-cell-center'
+                                }
+                              >
                                 {display}
                               </td>
                             );
@@ -244,6 +288,7 @@ const AttendanceList: React.FC = () => {
           width: 100%;
           border-collapse: collapse;
           font-size: 0.9rem;
+          --list-sticky-row1-height: 38px;
         }
         .list-table th,
         .list-table td {
@@ -251,17 +296,43 @@ const AttendanceList: React.FC = () => {
           border-bottom: 1px solid #333;
           white-space: nowrap;
         }
+        .list-table tbody tr:hover {
+          background: #222;
+        }
         .list-table th {
           text-align: left;
           font-weight: 600;
           color: ${COLORS.textSub};
           font-size: 0.85rem;
         }
+        .list-table thead th {
+          position: sticky;
+          background: #111;
+          z-index: 5;
+        }
+        .list-table thead tr:first-child th {
+          top: 0;
+          z-index: 7;
+        }
+        .list-table thead tr:nth-child(2) th {
+          top: var(--list-sticky-row1-height);
+          z-index: 6;
+        }
+        .list-month-header {
+          text-align: center;
+          font-weight: 800;
+          color: ${COLORS.primary};
+          background: #111;
+          vertical-align: middle;
+          padding-top: 0.35rem;
+          padding-bottom: 0.35rem;
+        }
+        .list-place-header.is-boundary,
+        .list-cell-center.is-boundary {
+          border-left: 2px solid #444;
+        }
         .list-table tbody tr:nth-child(even) {
           background: #181818;
-        }
-        .list-table tbody tr:hover {
-          background: #222;
         }
         .list-cell-center {
           text-align: center;
@@ -279,8 +350,11 @@ const AttendanceList: React.FC = () => {
           font-weight: 600;
         }
         .list-date-header {
-          font-size: 0.75rem;
+          display: block;
+          font-size: 0.72rem;
           color: ${COLORS.textSub};
+          font-weight: 500;
+          opacity: 0.95;
         }
 
         /* 모바일 카드 레이아웃 */

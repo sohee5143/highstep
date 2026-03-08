@@ -14,7 +14,7 @@ if (!SUPABASE_URL || !SUPABASE_SERVICE_ROLE_KEY) {
 const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
 
 async function main() {
-  const filePath = path.join(__dirname, '../src/data/attendance.json');
+  const filePath = path.join(__dirname, './data/attendance.json');
   const raw = fs.readFileSync(filePath, 'utf-8');
   const rows = JSON.parse(raw);
 

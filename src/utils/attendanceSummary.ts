@@ -22,33 +22,51 @@ interface DbSession {
   place: string;
 }
 
-export async function fetchAttendanceSummary(): Promise<AttendanceRecord[]> {
-  const { data: members, error: membersError } = await supabase
-    .from<DbMember>('members')
-    .select('id, name, type, gender, required_attendance, base_attendance_count, status');
+let cachedValue: AttendanceRecord[] | null = null;
+let cachedPromise: Promise<AttendanceRecord[]> | null = null;
 
-  if (membersError) {
-    console.error('[client] members 조회 실패', membersError);
-    return [];
+export function clearAttendanceSummaryCache(): void {
+  cachedValue = null;
+  cachedPromise = null;
+}
+
+export async function fetchAttendanceSummary(options?: { useCache?: boolean }): Promise<AttendanceRecord[]> {
+  const useCache = options?.useCache !== false;
+  if (useCache) {
+    if (cachedValue) return cachedValue;
+    if (cachedPromise) return cachedPromise;
   }
 
-  const { data: checkins, error: checkinsError } = await supabase
-    .from<DbCheckin>('checkins')
-    .select('member_id, session_id, kind');
+  const run = async (): Promise<AttendanceRecord[]> => {
+    const [membersRes, checkinsRes, sessionsRes] = await Promise.all([
+      supabase
+        .from<DbMember>('members')
+        .select('id, name, type, gender, required_attendance, base_attendance_count, status'),
+      supabase
+        .from<DbCheckin>('checkins')
+        .select('member_id, session_id, kind'),
+      supabase
+        .from<DbSession>('sessions')
+        .select('id, place'),
+    ]);
 
-  if (checkinsError) {
-    console.error('[client] checkins 조회 실패', checkinsError);
-    return [];
-  }
+    const { data: members, error: membersError } = membersRes;
+    if (membersError) {
+      console.error('[client] members 조회 실패', membersError);
+      return [];
+    }
 
-  const { data: sessions, error: sessionsError } = await supabase
-    .from<DbSession>('sessions')
-    .select('id, place');
+    const { data: checkins, error: checkinsError } = checkinsRes;
+    if (checkinsError) {
+      console.error('[client] checkins 조회 실패', checkinsError);
+      return [];
+    }
 
-  if (sessionsError) {
-    console.error('[client] sessions 조회 실패', sessionsError);
-    return [];
-  }
+    const { data: sessions, error: sessionsError } = sessionsRes;
+    if (sessionsError) {
+      console.error('[client] sessions 조회 실패', sessionsError);
+      return [];
+    }
 
   const sessionPlaceById: Record<number, string> = {};
   (sessions || []).forEach((s) => {
@@ -97,4 +115,16 @@ export async function fetchAttendanceSummary(): Promise<AttendanceRecord[]> {
   records.sort((a, b) => a.name.localeCompare(b.name, 'ko-KR'));
 
   return records;
+  };
+
+  const p = run();
+  if (useCache) cachedPromise = p;
+
+  try {
+    const result = await p;
+    if (useCache && result.length > 0) cachedValue = result;
+    return result;
+  } finally {
+    if (useCache) cachedPromise = null;
+  }
 }

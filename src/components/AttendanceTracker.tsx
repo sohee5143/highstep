@@ -4,16 +4,7 @@ import { AttendanceRecord } from '../types';
 import { getSummaryForName } from '../utils/localAttendance';
 import { fetchAttendanceSummary } from '../utils/attendanceSummary';
 import { fetchPlacesForCurrentSeason, PlaceInfo } from '../utils/places';
-
-const COLORS = {
-    primary: '#E3B04B',
-    background: '#000000',
-    cardBg: '#1A1A1A',
-    textMain: '#FFFFFF',
-    textSub: '#B3B3B3',
-    success: '#22C55E',
-    danger: '#EF4444',
-};
+import { COLORS } from '../constants/colors';
 
 const AttendanceTracker: React.FC = () => {
     const [inputName, setInputName] = useState('');
@@ -29,13 +20,13 @@ const AttendanceTracker: React.FC = () => {
         const load = async () => {
             setIsLoading(true);
             try {
-                const data = await fetchAttendanceSummary();
+                const [data, placeInfos] = await Promise.all([
+                    fetchAttendanceSummary(),
+                    fetchPlacesForCurrentSeason(),
+                ]);
                 if (cancelled) return;
                 setAllRecords(data);
                 setDbMemberNames(data.map((r) => r.name));
-
-                const placeInfos = await fetchPlacesForCurrentSeason();
-                if (cancelled) return;
                 setPlaces(placeInfos);
             } finally {
                 if (!cancelled) setIsLoading(false);
