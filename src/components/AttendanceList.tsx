@@ -279,7 +279,12 @@ const AttendanceList: React.FC = () => {
           border-radius: 16px;
           box-shadow: 0 4px 16px rgba(227,176,75,0.07);
           padding: 1rem;
+          overflow: visible;
+        }
+        .list-table-wrapper {
+          width: 100%;
           overflow-x: auto;
+          overflow-y: visible;
         }
         .list-table-wrapper {
           width: 100%;
@@ -288,7 +293,7 @@ const AttendanceList: React.FC = () => {
           width: 100%;
           border-collapse: collapse;
           font-size: 0.9rem;
-          --list-sticky-row1-height: 38px;
+          --list-sticky-row1-height: 44px;
         }
         .list-table th,
         .list-table td {
@@ -313,6 +318,8 @@ const AttendanceList: React.FC = () => {
         .list-table thead tr:first-child th {
           top: 0;
           z-index: 7;
+          height: var(--list-sticky-row1-height);
+          vertical-align: middle;
         }
         .list-table thead tr:nth-child(2) th {
           top: var(--list-sticky-row1-height);
