@@ -11,3 +11,17 @@ export interface AttendanceRecord {
 }
 // 현재 시즌 식별자 (sessions.season 컬럼과 매칭)
 export const CURRENT_SEASON = '2026-1';
+
+export interface Gym {
+  id: number;
+  name: string;
+  icon_url: string | null;
+  created_at: string;
+}
+
+export interface ScheduleEntry {
+  id: number;
+  date: string; // 'YYYY-MM-DD'
+  gym_id: number;
+  gyms: Gym; // Supabase JOIN 결과
+}
