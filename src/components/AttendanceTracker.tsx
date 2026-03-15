@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import { AttendanceRecord } from '../types';
 import { getSummaryForName } from '../utils/localAttendance';
 import { fetchAttendanceSummary } from '../utils/attendanceSummary';
+import WorkoutCalendar from './WorkoutCalendar';
 import { fetchPlacesForCurrentSeason, PlaceInfo } from '../utils/places';
 import { COLORS } from '../constants/colors';
 
@@ -225,6 +226,10 @@ const AttendanceTracker: React.FC = () => {
                         </div>
                     ) : null}
                 </main>
+                {/* 정기운동 달력 */}
+                <section style={{ padding: '1.5rem 0 0.5rem' }}>
+                    <WorkoutCalendar />
+                </section>
                 <div className="tracker-nav" aria-label="페이지 이동">
                     <Link to="/rank" className="tracker-nav-btn tracker-nav-btn-rank" aria-label="출석 랭킹 보기">
                         출석 랭킹 보기
