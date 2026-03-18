@@ -102,10 +102,6 @@ const AttendanceTracker: React.FC = () => {
                         />
                     </Link>
                 </header>
-                {/* 정기운동 달력 */}
-                <section style={{ padding: '0.5rem 0 0' }}>
-                    <WorkoutCalendar />
-                </section>
                 {/* 타이틀 */}
                 <section className="tracker-status" style={{ marginTop: '1.25rem' }}>
                     <h2 className="tracker-title">내 출석 현황</h2>
@@ -238,6 +234,10 @@ const AttendanceTracker: React.FC = () => {
                         전체 정기운동 출석 현황 보기
                     </Link>
                 </div>
+                {/* 정기운동 달력 */}
+                <section style={{ padding: '1rem 0 2rem' }}>
+                    <WorkoutCalendar />
+                </section>
                 {/* 스타일 */}
                 <style>{`
                     .tracker-root {

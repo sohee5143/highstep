@@ -9,10 +9,8 @@ const WorkoutCalendar: React.FC = () => {
   const [month, setMonth] = useState(now.getMonth() + 1);
   const [schedule, setSchedule] = useState<ScheduleEntry[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [tooltip, setTooltip] = useState<{ dateStr: string; entries: ScheduleEntry[] } | null>(null);
   const touchStartX = useRef<number | null>(null);
   const touchStartY = useRef<number | null>(null);
-  const tooltipRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -23,23 +21,7 @@ const WorkoutCalendar: React.FC = () => {
     return () => { cancelled = true; };
   }, [year, month]);
 
-  // 외부 탭 시 툴팁 닫기
-  useEffect(() => {
-    const handler = (e: MouseEvent | TouchEvent) => {
-      if (tooltipRef.current && !tooltipRef.current.contains(e.target as Node)) {
-        setTooltip(null);
-      }
-    };
-    document.addEventListener('mousedown', handler);
-    document.addEventListener('touchstart', handler);
-    return () => {
-      document.removeEventListener('mousedown', handler);
-      document.removeEventListener('touchstart', handler);
-    };
-  }, []);
-
   const navigateMonth = (delta: number) => {
-    setTooltip(null);
     setMonth((m) => {
       const next = m + delta;
       if (next < 1) { setYear((y) => y - 1); return 12; }
@@ -90,16 +72,6 @@ const WorkoutCalendar: React.FC = () => {
     `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
 
   const todayStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
-
-  const handleCellClick = (dateStr: string, entries: ScheduleEntry[]) => {
-    if (entries.length === 0) { setTooltip(null); return; }
-    setTooltip((prev) => prev?.dateStr === dateStr ? null : { dateStr, entries });
-  };
-
-  const formatDateLabel = (dateStr: string) => {
-    const [, m, d] = dateStr.split('-');
-    return `${Number(m)}월 ${Number(d)}일`;
-  };
 
   return (
     <div style={{ padding: '0 0.5rem' }}>
@@ -160,19 +132,17 @@ const WorkoutCalendar: React.FC = () => {
           background: #111;
           border-radius: 8px;
           padding: 5px 3px 4px;
-          height: 68px;
+          height: 58px;
           vertical-align: top;
           position: relative;
           cursor: default;
         }
-        .wc-td-clickable { cursor: pointer; }
         .wc-td-empty { background: transparent; cursor: default; }
         .wc-td-event { box-shadow: 0 0 0 1px rgba(227,176,75,0.35); }
         .wc-td-today {
           box-shadow: 0 0 0 1.5px ${COLORS.primary};
           background: rgba(227,176,75,0.08);
         }
-        .wc-td-active { background: rgba(227,176,75,0.15) !important; }
         .wc-day {
           font-size: 0.72rem;
           font-weight: 600;
@@ -194,7 +164,7 @@ const WorkoutCalendar: React.FC = () => {
           display: flex;
           flex-direction: column;
           align-items: center;
-          gap: 1px;
+          gap: 3px;
           width: 100%;
         }
         .wc-gym-icon {
@@ -237,56 +207,6 @@ const WorkoutCalendar: React.FC = () => {
           margin: 2rem auto;
         }
         @keyframes wcSpin { to { transform: rotate(360deg); } }
-        /* 툴팁 */
-        .wc-tooltip {
-          margin-top: 0.6rem;
-          background: #222;
-          border-radius: 12px;
-          padding: 0.75rem 1rem;
-          display: flex;
-          flex-direction: column;
-          gap: 0.5rem;
-          animation: wcFadeIn 0.15s ease;
-        }
-        @keyframes wcFadeIn {
-          from { opacity: 0; transform: translateY(-4px); }
-          to   { opacity: 1; transform: translateY(0); }
-        }
-        .wc-tooltip-date {
-          font-size: 0.82rem;
-          font-weight: 700;
-          color: ${COLORS.primary};
-        }
-        .wc-tooltip-item {
-          display: flex;
-          align-items: center;
-          gap: 0.6rem;
-        }
-        .wc-tooltip-icon {
-          width: 28px;
-          height: 28px;
-          border-radius: 6px;
-          object-fit: cover;
-          flex-shrink: 0;
-        }
-        .wc-tooltip-fallback {
-          width: 28px;
-          height: 28px;
-          border-radius: 6px;
-          background: ${COLORS.primary};
-          color: #111;
-          font-size: 0.75rem;
-          font-weight: bold;
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          flex-shrink: 0;
-        }
-        .wc-tooltip-name {
-          font-size: 0.88rem;
-          color: ${COLORS.textMain};
-          font-weight: 500;
-        }
         @media (max-width: 390px) {
           .wc-td { height: 62px; padding: 4px 2px 3px; }
           .wc-gym-icon, .wc-gym-fallback { width: 22px; height: 22px; }
@@ -309,91 +229,66 @@ const WorkoutCalendar: React.FC = () => {
         {isLoading ? (
           <div className="wc-spinner" />
         ) : (
-          <>
-            <table className="wc-table">
-              <thead>
-                <tr>
-                  {['일', '월', '화', '수', '목', '금', '토'].map((d, i) => (
-                    <th
-                      key={d}
-                      className={`wc-th${i === 0 ? ' wc-th-sun' : i === 6 ? ' wc-th-sat' : ''}`}
-                    >
-                      {d}
-                    </th>
-                  ))}
+          <table className="wc-table">
+            <thead>
+              <tr>
+                {['일', '월', '화', '수', '목', '금', '토'].map((d, i) => (
+                  <th
+                    key={d}
+                    className={`wc-th${i === 0 ? ' wc-th-sun' : i === 6 ? ' wc-th-sat' : ''}`}
+                  >
+                    {d}
+                  </th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {calendarCells.map((week, wi) => (
+                <tr key={wi}>
+                  {week.map((day, di) => {
+                    if (!day) return <td key={di} className="wc-td wc-td-empty" />;
+                    const dateStr = toDateStr(day);
+                    const entries = scheduleByDate[dateStr] || [];
+                    const hasEvent = entries.length > 0;
+                    const isToday = dateStr === todayStr;
+                    const tdClass = [
+                      'wc-td',
+                      hasEvent ? 'wc-td-event' : '',
+                      isToday ? 'wc-td-today' : '',
+                    ].filter(Boolean).join(' ');
+                    const dayClass = [
+                      'wc-day',
+                      di === 0 ? 'wc-day-sun' : di === 6 ? 'wc-day-sat' : '',
+                      isToday ? 'wc-day-today' : '',
+                    ].filter(Boolean).join(' ');
+                    return (
+                      <td key={di} className={tdClass}>
+                        <div className={dayClass}>{day}</div>
+                        <div className="wc-icons">
+                          {entries.map((entry) => (
+                            <div key={entry.id} className="wc-gym-entry">
+                              {entry.gyms?.icon_url ? (
+                                <img
+                                  src={entry.gyms.icon_url}
+                                  alt={entry.gyms.name}
+                                  className="wc-gym-icon"
+                                />
+                              ) : (
+                                <div className="wc-gym-fallback">
+                                  {entry.gyms?.name?.[0]}
+                                </div>
+                              )}
+                              <span className="wc-gym-name">{entry.gyms?.name}</span>
+                            </div>
+                          ))}
+                        </div>
+                      </td>
+                    );
+                  })}
                 </tr>
-              </thead>
-              <tbody>
-                {calendarCells.map((week, wi) => (
-                  <tr key={wi}>
-                    {week.map((day, di) => {
-                      if (!day) return <td key={di} className="wc-td wc-td-empty" />;
-                      const dateStr = toDateStr(day);
-                      const entries = scheduleByDate[dateStr] || [];
-                      const hasEvent = entries.length > 0;
-                      const isToday = dateStr === todayStr;
-                      const isActive = tooltip?.dateStr === dateStr;
-                      const tdClass = [
-                        'wc-td',
-                        hasEvent ? 'wc-td-clickable wc-td-event' : '',
-                        isToday ? 'wc-td-today' : '',
-                        isActive ? 'wc-td-active' : '',
-                      ].filter(Boolean).join(' ');
-                      const dayClass = [
-                        'wc-day',
-                        di === 0 ? 'wc-day-sun' : di === 6 ? 'wc-day-sat' : '',
-                        isToday ? 'wc-day-today' : '',
-                      ].filter(Boolean).join(' ');
-                      return (
-                        <td
-                          key={di}
-                          className={tdClass}
-                          onClick={() => handleCellClick(dateStr, entries)}
-                        >
-                          <div className={dayClass}>{day}</div>
-                          <div className="wc-icons">
-                            {entries.map((entry) => (
-                              <div key={entry.id} className="wc-gym-entry">
-                                {entry.gyms?.icon_url ? (
-                                  <img
-                                    src={entry.gyms.icon_url}
-                                    alt={entry.gyms.name}
-                                    className="wc-gym-icon"
-                                  />
-                                ) : (
-                                  <div className="wc-gym-fallback">
-                                    {entry.gyms?.name?.[0]}
-                                  </div>
-                                )}
-                                <span className="wc-gym-name">{entry.gyms?.name}</span>
-                              </div>
-                            ))}
-                          </div>
-                        </td>
-                      );
-                    })}
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-
-            {/* 툴팁 패널 */}
-            {tooltip && (
-              <div className="wc-tooltip" ref={tooltipRef}>
-                <span className="wc-tooltip-date">{formatDateLabel(tooltip.dateStr)}</span>
-                {tooltip.entries.map((entry) => (
-                  <div key={entry.id} className="wc-tooltip-item">
-                    {entry.gyms?.icon_url ? (
-                      <img src={entry.gyms.icon_url} alt={entry.gyms.name} className="wc-tooltip-icon" />
-                    ) : (
-                      <div className="wc-tooltip-fallback">{entry.gyms?.name?.[0]}</div>
-                    )}
-                    <span className="wc-tooltip-name">{entry.gyms?.name}</span>
-                  </div>
-                ))}
-              </div>
-            )}
-          </>
+              ))}
+            </tbody>
+          </table>
         )}
       </div>
     </div>
