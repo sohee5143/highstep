@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import { AttendanceRecord } from '../types';
 import { getSummaryForName } from '../utils/localAttendance';
 import { fetchAttendanceSummary } from '../utils/attendanceSummary';
+import WorkoutCalendar from './WorkoutCalendar';
 import { fetchPlacesForCurrentSeason, PlaceInfo } from '../utils/places';
 import { COLORS } from '../constants/colors';
 
@@ -102,7 +103,7 @@ const AttendanceTracker: React.FC = () => {
                     </Link>
                 </header>
                 {/* 타이틀 */}
-                <section className="tracker-status">
+                <section className="tracker-status" style={{ marginTop: '1.25rem' }}>
                     <h2 className="tracker-title">내 출석 현황</h2>
                     <p className="tracker-desc">2026년 상반기(2월, 3월, 4월) 출석현황</p>
                 </section>
@@ -233,6 +234,10 @@ const AttendanceTracker: React.FC = () => {
                         전체 정기운동 출석 현황 보기
                     </Link>
                 </div>
+                {/* 정기운동 달력 */}
+                <section style={{ padding: '1rem 0 2rem' }}>
+                    <WorkoutCalendar />
+                </section>
                 {/* 스타일 */}
                 <style>{`
                     .tracker-root {
@@ -332,7 +337,7 @@ const AttendanceTracker: React.FC = () => {
                     }
                     .tracker-main {
                         flex: 1;
-                        padding: 1rem 0.5rem 5.5rem 0.5rem;
+                        padding: 1rem 0.5rem 1.5rem 0.5rem;
                         display: flex;
                         flex-direction: column;
                         gap: 1.5rem;

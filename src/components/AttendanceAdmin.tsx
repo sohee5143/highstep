@@ -4,6 +4,10 @@ import { COLORS } from '../constants/colors';
 import { CURRENT_SEASON } from '../types';
 import { addCheck, removeCheck } from '../utils/localAttendance';
 import { supabase } from '../utils/supabaseClient';
+import AdminGymManager from './AdminGymManager';
+import AdminCalendarEditor from './AdminCalendarEditor';
+
+type AdminTab = 'checkin' | 'gyms' | 'schedule';
 
 interface CheckedMember {
   name: string;
@@ -19,6 +23,7 @@ interface Member {
 }
 
 const AttendanceAdmin: React.FC = () => {
+  const [activeTab, setActiveTab] = useState<AdminTab>('checkin');
   const [selectedNames, setSelectedNames] = useState<string[]>([]);
   const [selectedPlace, setSelectedPlace] = useState('');
   const [checkedMembers, setCheckedMembers] = useState<CheckedMember[]>([]);
@@ -211,14 +216,49 @@ const AttendanceAdmin: React.FC = () => {
         <span className="admin-time">{formattedDate} {formattedTime}</span>
         <span className="admin-count">오늘 체크된 부원: {checkedMembers.length}명</span>
       </section>
+      {/* 탭 */}
+      <div style={{ display: 'flex', gap: 6, padding: '0.5rem 0.5rem 0', maxWidth: 480, width: '100%', margin: '0 auto', boxSizing: 'border-box' }}>
+        {([
+          { key: 'checkin', label: '출석 체크' },
+          { key: 'gyms', label: '암장 관리' },
+          { key: 'schedule', label: '스케줄 편집' },
+        ] as { key: AdminTab; label: string }[]).map((tab) => (
+          <button
+            key={tab.key}
+            onClick={() => setActiveTab(tab.key)}
+            style={{
+              flex: 1,
+              padding: '0.45rem 0',
+              background: activeTab === tab.key ? COLORS.primary : '#222',
+              color: activeTab === tab.key ? '#111' : COLORS.textSub,
+              borderRadius: 10,
+              border: 'none',
+              fontWeight: 600,
+              fontSize: '0.82rem',
+              cursor: 'pointer',
+              transition: 'background 0.15s, color 0.15s',
+            }}
+          >
+            {tab.label}
+          </button>
+        ))}
+      </div>
+
       {/* 체크 성공 메시지 */}
-      {lastChecked && (
+      {activeTab === 'checkin' && lastChecked && (
         <div className="admin-card admin-success-card">
           <span className="admin-success-title">✓ {lastChecked.name}님이 {lastChecked.place}에 출석 체크되었습니다</span>
         </div>
       )}
+      {/* 탭별 콘텐츠 */}
+      {activeTab === 'gyms' && (
+        <main className="admin-main"><AdminGymManager /></main>
+      )}
+      {activeTab === 'schedule' && (
+        <main className="admin-main"><AdminCalendarEditor /></main>
+      )}
       {/* 출석 폼 카드 */}
-      <main className="admin-main">
+      <main className="admin-main" style={{ display: activeTab === 'checkin' ? 'flex' : 'none' }}>
         <div className="admin-card admin-form-card">
           <label className="admin-label">부원 선택</label>
           <div className="admin-member-list" aria-label="부원 선택 목록">
