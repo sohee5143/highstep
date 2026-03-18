@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { COLORS } from '../constants/colors';
 import { Gym, ScheduleEntry } from '../types';
 import { fetchGyms } from '../utils/gyms';
@@ -12,6 +12,9 @@ const AdminCalendarEditor: React.FC = () => {
   const [gyms, setGyms] = useState<Gym[]>([]);
   const [selectedDate, setSelectedDate] = useState<string | null>(null);
   const [selectedGymId, setSelectedGymId] = useState<number | ''>('');
+  const [gymSearch, setGymSearch] = useState('');
+  const [gymDropdownOpen, setGymDropdownOpen] = useState(false);
+  const gymSearchRef = useRef<HTMLDivElement>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
 
@@ -65,10 +68,23 @@ const AdminCalendarEditor: React.FC = () => {
   const toDateStr = (day: number) =>
     `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
 
+  // 외부 클릭 시 드롭다운 닫기
+  useEffect(() => {
+    const handler = (e: MouseEvent) => {
+      if (gymSearchRef.current && !gymSearchRef.current.contains(e.target as Node)) {
+        setGymDropdownOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, []);
+
   const handleCellClick = (day: number) => {
     const d = toDateStr(day);
     setSelectedDate((prev) => (prev === d ? null : d));
     setSelectedGymId('');
+    setGymSearch('');
+    setGymDropdownOpen(false);
   };
 
   const handleAdd = async () => {
@@ -78,6 +94,8 @@ const AdminCalendarEditor: React.FC = () => {
     const updated = await fetchScheduleForMonth(year, month);
     setSchedule(updated);
     setSelectedGymId('');
+    setGymSearch('');
+    setGymDropdownOpen(false);
     setIsSaving(false);
   };
 
@@ -199,7 +217,11 @@ const AdminCalendarEditor: React.FC = () => {
           flex-direction: column;
           gap: 0.65rem;
         }
-        .ace-select {
+        .ace-search-box {
+          position: relative;
+          flex: 1;
+        }
+        .ace-search-input {
           width: 100%;
           box-sizing: border-box;
           padding: 0.6rem 0.8rem;
@@ -210,7 +232,53 @@ const AdminCalendarEditor: React.FC = () => {
           color: ${COLORS.textMain};
           outline: none;
         }
-        .ace-select:focus { box-shadow: 0 0 0 2px ${COLORS.primary}; }
+        .ace-search-input:focus { box-shadow: 0 0 0 2px ${COLORS.primary}; }
+        .ace-search-input::placeholder { color: ${COLORS.textSub}; }
+        .ace-dropdown {
+          position: absolute;
+          top: calc(100% + 4px);
+          left: 0;
+          right: 0;
+          background: #1e1e1e;
+          border-radius: 10px;
+          box-shadow: 0 4px 16px rgba(0,0,0,0.5);
+          max-height: 200px;
+          overflow-y: auto;
+          z-index: 100;
+        }
+        .ace-dropdown-item {
+          display: flex;
+          align-items: center;
+          gap: 0.5rem;
+          padding: 0.5rem 0.75rem;
+          cursor: pointer;
+          font-size: 0.88rem;
+          color: ${COLORS.textMain};
+          transition: background 0.1s;
+        }
+        .ace-dropdown-item:hover { background: #2a2a2a; }
+        .ace-dropdown-item-selected { background: rgba(227,176,75,0.15); }
+        .ace-dropdown-icon {
+          width: 22px; height: 22px;
+          border-radius: 4px;
+          object-fit: cover;
+          flex-shrink: 0;
+        }
+        .ace-dropdown-fallback {
+          width: 22px; height: 22px;
+          border-radius: 4px;
+          background: ${COLORS.primary};
+          color: #111;
+          font-size: 0.65rem;
+          font-weight: bold;
+          display: flex; align-items: center; justify-content: center;
+          flex-shrink: 0;
+        }
+        .ace-dropdown-empty {
+          padding: 0.6rem 0.75rem;
+          font-size: 0.85rem;
+          color: ${COLORS.textSub};
+        }
         .ace-add-btn {
           padding: 0.55rem;
           font-size: 0.88rem;
@@ -344,16 +412,44 @@ const AdminCalendarEditor: React.FC = () => {
             {/* 암장 추가 */}
             {availableGyms.length > 0 && (
               <div style={{ display: 'flex', gap: '0.5rem', marginTop: '0.3rem' }}>
-                <select
-                  className="ace-select"
-                  value={selectedGymId}
-                  onChange={(e) => setSelectedGymId(e.target.value === '' ? '' : Number(e.target.value))}
-                >
-                  <option value="">암장 선택</option>
-                  {availableGyms.map((g) => (
-                    <option key={g.id} value={g.id}>{g.name}</option>
-                  ))}
-                </select>
+                <div className="ace-search-box" ref={gymSearchRef}>
+                  <input
+                    className="ace-search-input"
+                    placeholder="암장 검색..."
+                    value={gymSearch}
+                    onChange={(e) => { setGymSearch(e.target.value); setGymDropdownOpen(true); setSelectedGymId(''); }}
+                    onFocus={() => setGymDropdownOpen(true)}
+                  />
+                  {gymDropdownOpen && (
+                    <div className="ace-dropdown">
+                      {availableGyms.filter((g) => g.name.includes(gymSearch)).length === 0 ? (
+                        <div className="ace-dropdown-empty">검색 결과 없음</div>
+                      ) : (
+                        availableGyms
+                          .filter((g) => g.name.includes(gymSearch))
+                          .map((g) => (
+                            <div
+                              key={g.id}
+                              className={`ace-dropdown-item${selectedGymId === g.id ? ' ace-dropdown-item-selected' : ''}`}
+                              onMouseDown={(e) => {
+                                e.preventDefault();
+                                setSelectedGymId(g.id);
+                                setGymSearch(g.name);
+                                setGymDropdownOpen(false);
+                              }}
+                            >
+                              {g.icon_url ? (
+                                <img src={g.icon_url} alt={g.name} className="ace-dropdown-icon" />
+                              ) : (
+                                <div className="ace-dropdown-fallback">{g.name[0]}</div>
+                              )}
+                              {g.name}
+                            </div>
+                          ))
+                      )}
+                    </div>
+                  )}
+                </div>
                 <button
                   className="ace-add-btn"
                   onClick={handleAdd}

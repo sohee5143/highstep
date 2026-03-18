@@ -102,8 +102,12 @@ const AttendanceTracker: React.FC = () => {
                         />
                     </Link>
                 </header>
+                {/* 정기운동 달력 */}
+                <section style={{ padding: '0.5rem 0 0' }}>
+                    <WorkoutCalendar />
+                </section>
                 {/* 타이틀 */}
-                <section className="tracker-status">
+                <section className="tracker-status" style={{ marginTop: '1.25rem' }}>
                     <h2 className="tracker-title">내 출석 현황</h2>
                     <p className="tracker-desc">2026년 상반기(2월, 3월, 4월) 출석현황</p>
                 </section>
@@ -226,10 +230,6 @@ const AttendanceTracker: React.FC = () => {
                         </div>
                     ) : null}
                 </main>
-                {/* 정기운동 달력 */}
-                <section style={{ padding: '1.5rem 0 0.5rem' }}>
-                    <WorkoutCalendar />
-                </section>
                 <div className="tracker-nav" aria-label="페이지 이동">
                     <Link to="/rank" className="tracker-nav-btn tracker-nav-btn-rank" aria-label="출석 랭킹 보기">
                         출석 랭킹 보기
@@ -337,7 +337,7 @@ const AttendanceTracker: React.FC = () => {
                     }
                     .tracker-main {
                         flex: 1;
-                        padding: 1rem 0.5rem 5.5rem 0.5rem;
+                        padding: 1rem 0.5rem 1.5rem 0.5rem;
                         display: flex;
                         flex-direction: column;
                         gap: 1.5rem;
