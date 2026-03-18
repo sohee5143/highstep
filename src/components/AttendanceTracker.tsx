@@ -102,142 +102,153 @@ const AttendanceTracker: React.FC = () => {
                         />
                     </Link>
                 </header>
-                {/* 타이틀 */}
-                <section className="tracker-status" style={{ marginTop: '1.25rem' }}>
-                    <h2 className="tracker-title">내 출석 현황</h2>
-                    <p className="tracker-desc">2026년 상반기(2월, 3월, 4월) 출석현황</p>
-                </section>
-                {/* 이름 입력 카드 */}
-                <main className="tracker-main">
-                    <div className="tracker-card tracker-input-card">
-                        <label htmlFor="name-input" className="tracker-label">이름 입력</label>
-                        <div className="tracker-input-row">
-                            <input
-                                id="name-input"
-                                type="text"
-                                value={inputName}
-                                onChange={handleNameChange}
-                                onKeyPress={handleKeyPress}
-                                placeholder="이름을 입력하세요"
-                                aria-label="부원 이름 입력"
-                                className="tracker-input"
-                            />
-                            <button
-                                onClick={handleSearch}
-                                aria-label="조회"
-                                className="tracker-btn"
-                                disabled={isLoading}
-                            >조회</button>
-                        </div>
-                        {isLoading && (
-                            <div className="tracker-loading" aria-label="데이터 로딩 중">
-                                <div className="tracker-spinner" />
-                            </div>
-                        )}
-                        {suggestions.length > 0 && (
-                            <ul className="tracker-suggestions">
-                                {suggestions.map((name) => (
-                                    <li
-                                        key={name}
-                                        className="tracker-suggestion-item"
-                                        onClick={() => handleSelectSuggestion(name)}
-                                    >
-                                        {name}
-                                    </li>
-                                ))}
-                            </ul>
-                        )}
-                    </div>
-                    {/* 결과 카드 */}
-                    {record ? (
-                        <div className="tracker-card tracker-result-card">
-                            <div className="tracker-result-header">
-                                <span className="tracker-name">{record.name}</span>
-                                <span className="tracker-type">{record.type === '기존' ? '기존부원' : '신입'}</span>
-                            </div>
-                            <div className="tracker-result-stats">
-                                <div className="tracker-stat">
-                                    <span className="tracker-stat-label">필요 출석</span>
-                                    <span className="tracker-stat-value">{record.requiredAttendance}</span>
-                                </div>
-                                <div className="tracker-stat">
-                                    <span className="tracker-stat-label">현재 출석</span>
-                                    <span className="tracker-stat-value tracker-success">{effectiveAttendanceCount}</span>
-                                </div>
-                            </div>
-                            <div className="tracker-progress-bar">
-                                <span className="tracker-progress-label">출석 진행률</span>
-                                <span className="tracker-progress-value">{effectiveAttendanceCount} / {record.requiredAttendance}</span>
-                                <div className="tracker-progress-bg">
-                                    <div className="tracker-progress-fill" style={{ width: `${attendanceRate}%` }}></div>
-                                </div>
-                            </div>
-                            <div className="tracker-attended-list">
-                                <span className="tracker-attended-label">정기운동 출석 리스트</span>
-                                <div className="tracker-attended-items">
-                                    {places.filter((p) => {
-                                        const place = p.name;
-                                        const base = record.records[place];
-                                        const extraCount = extraSummary?.perPlaceCount[place] || 0;
-                                        return base || extraCount > 0;
-                                    }).map((p) => {
-                                        const place = p.name;
-                                        const base = record.records[place];
-                                        const latestTs = extraSummary?.perPlaceLatest[place];
-                                        let dateLabel: string | null = null;
-                                        if (latestTs) {
-                                            const d = new Date(latestTs);
-                                            const month = d.getMonth() + 1;
-                                            const day = d.getDate();
-                                            dateLabel = `${month}/${day}`;
-                                        } else if (p.dateLabel) {
-											dateLabel = p.dateLabel;
-                                        }
-                                        return (
-                                            <div key={place} className="tracker-attended-item">
-                                                <div className="tracker-attended-left">
-                                                    <span className="tracker-attended-place">{place}</span>
-                                                    {dateLabel && (
-                                                        <span className="tracker-attended-date">{dateLabel}</span>
-                                                    )}
-                                                </div>
-                                                <span className="tracker-attended-badge">
-                                                    {base === '25분기 반영' ? '25분기' : '✓'}
-                                                </span>
-                                            </div>
-                                        );
-                                    })}
-                                    {!places.some((p) => {
-                                        const place = p.name;
-                                        const base = record.records[place];
-                                        const extraCount = extraSummary?.perPlaceCount[place] || 0;
-                                        return base || extraCount > 0;
-                                    }) && (
-                                        <span className="tracker-no-attendance">아직 출석 기록이 없습니다</span>
-                                    )}
-                                </div>
-                            </div>
 
+                {/* 데스크탑: 2컬럼 / 모바일: 단일 컬럼 */}
+                <div className="tracker-layout">
+                    {/* 왼쪽: 출석 영역 */}
+                    <div className="tracker-left">
+                        {/* 타이틀 */}
+                        <section className="tracker-status" style={{ marginTop: '1.25rem' }}>
+                            <h2 className="tracker-title">내 출석 현황</h2>
+                            <p className="tracker-desc">2026년 상반기(2월, 3월, 4월) 출석현황</p>
+                        </section>
+                        {/* 이름 입력 카드 */}
+                        <main className="tracker-main">
+                            <div className="tracker-card tracker-input-card">
+                                <label htmlFor="name-input" className="tracker-label">이름 입력</label>
+                                <div className="tracker-input-row">
+                                    <input
+                                        id="name-input"
+                                        type="text"
+                                        value={inputName}
+                                        onChange={handleNameChange}
+                                        onKeyPress={handleKeyPress}
+                                        placeholder="이름을 입력하세요"
+                                        aria-label="부원 이름 입력"
+                                        className="tracker-input"
+                                    />
+                                    <button
+                                        onClick={handleSearch}
+                                        aria-label="조회"
+                                        className="tracker-btn"
+                                        disabled={isLoading}
+                                    >조회</button>
+                                </div>
+                                {isLoading && (
+                                    <div className="tracker-loading" aria-label="데이터 로딩 중">
+                                        <div className="tracker-spinner" />
+                                    </div>
+                                )}
+                                {suggestions.length > 0 && (
+                                    <ul className="tracker-suggestions">
+                                        {suggestions.map((name) => (
+                                            <li
+                                                key={name}
+                                                className="tracker-suggestion-item"
+                                                onClick={() => handleSelectSuggestion(name)}
+                                            >
+                                                {name}
+                                            </li>
+                                        ))}
+                                    </ul>
+                                )}
+                            </div>
+                            {/* 결과 카드 */}
+                            {record ? (
+                                <div className="tracker-card tracker-result-card">
+                                    <div className="tracker-result-header">
+                                        <span className="tracker-name">{record.name}</span>
+                                        <span className="tracker-type">{record.type === '기존' ? '기존부원' : '신입'}</span>
+                                    </div>
+                                    <div className="tracker-result-stats">
+                                        <div className="tracker-stat">
+                                            <span className="tracker-stat-label">필요 출석</span>
+                                            <span className="tracker-stat-value">{record.requiredAttendance}</span>
+                                        </div>
+                                        <div className="tracker-stat">
+                                            <span className="tracker-stat-label">현재 출석</span>
+                                            <span className="tracker-stat-value tracker-success">{effectiveAttendanceCount}</span>
+                                        </div>
+                                    </div>
+                                    <div className="tracker-progress-bar">
+                                        <span className="tracker-progress-label">출석 진행률</span>
+                                        <span className="tracker-progress-value">{effectiveAttendanceCount} / {record.requiredAttendance}</span>
+                                        <div className="tracker-progress-bg">
+                                            <div className="tracker-progress-fill" style={{ width: `${attendanceRate}%` }}></div>
+                                        </div>
+                                    </div>
+                                    <div className="tracker-attended-list">
+                                        <span className="tracker-attended-label">정기운동 출석 리스트</span>
+                                        <div className="tracker-attended-items">
+                                            {places.filter((p) => {
+                                                const place = p.name;
+                                                const base = record.records[place];
+                                                const extraCount = extraSummary?.perPlaceCount[place] || 0;
+                                                return base || extraCount > 0;
+                                            }).map((p) => {
+                                                const place = p.name;
+                                                const base = record.records[place];
+                                                const latestTs = extraSummary?.perPlaceLatest[place];
+                                                let dateLabel: string | null = null;
+                                                if (latestTs) {
+                                                    const d = new Date(latestTs);
+                                                    const month = d.getMonth() + 1;
+                                                    const day = d.getDate();
+                                                    dateLabel = `${month}/${day}`;
+                                                } else if (p.dateLabel) {
+                                                    dateLabel = p.dateLabel;
+                                                }
+                                                return (
+                                                    <div key={place} className="tracker-attended-item">
+                                                        <div className="tracker-attended-left">
+                                                            <span className="tracker-attended-place">{place}</span>
+                                                            {dateLabel && (
+                                                                <span className="tracker-attended-date">{dateLabel}</span>
+                                                            )}
+                                                        </div>
+                                                        <span className="tracker-attended-badge">
+                                                            {base === '25분기 반영' ? '25분기' : '✓'}
+                                                        </span>
+                                                    </div>
+                                                );
+                                            })}
+                                            {!places.some((p) => {
+                                                const place = p.name;
+                                                const base = record.records[place];
+                                                const extraCount = extraSummary?.perPlaceCount[place] || 0;
+                                                return base || extraCount > 0;
+                                            }) && (
+                                                <span className="tracker-no-attendance">아직 출석 기록이 없습니다</span>
+                                            )}
+                                        </div>
+                                    </div>
+                                </div>
+                            ) : !isLoading && inputName ? (
+                                <div className="tracker-card tracker-error-card">
+                                    <span className="tracker-error-title">😕 해당 이름의 출석 기록이 없습니다</span>
+                                    <span className="tracker-error-desc">이름을 정확히 입력해주세요</span>
+                                </div>
+                            ) : null}
+                        </main>
+                        <div className="tracker-nav" aria-label="페이지 이동">
+                            <Link to="/rank" className="tracker-nav-btn tracker-nav-btn-rank" aria-label="출석 랭킹 보기">
+                                출석 랭킹 보기
+                            </Link>
+                            <Link to="/list" className="tracker-nav-btn tracker-nav-btn-list" aria-label="전체 정기운동 출석 현황 보기">
+                                전체 정기운동 출석 현황 보기
+                            </Link>
                         </div>
-                    ) : !isLoading && inputName ? (
-                        <div className="tracker-card tracker-error-card">
-                            <span className="tracker-error-title">😕 해당 이름의 출석 기록이 없습니다</span>
-                            <span className="tracker-error-desc">이름을 정확히 입력해주세요</span>
-                        </div>
-                    ) : null}
-                </main>
-                <div className="tracker-nav" aria-label="페이지 이동">
-                    <Link to="/rank" className="tracker-nav-btn tracker-nav-btn-rank" aria-label="출석 랭킹 보기">
-                        출석 랭킹 보기
-                    </Link>
-                    <Link to="/list" className="tracker-nav-btn tracker-nav-btn-list" aria-label="전체 정기운동 출석 현황 보기">
-                        전체 정기운동 출석 현황 보기
-                    </Link>
+                        {/* 모바일 전용: 달력 하단 표시 */}
+                        <section className="tracker-calendar-mobile" style={{ padding: '1rem 0 2rem' }}>
+                            <WorkoutCalendar />
+                        </section>
+                    </div>
+
+                    {/* 오른쪽: 달력 (데스크탑 전용) */}
+                    <div className="tracker-right">
+                        <WorkoutCalendar />
+                    </div>
                 </div>
-                {/* 정기운동 달력 */}
-                <section style={{ padding: '1rem 0 2rem' }}>
-                    <WorkoutCalendar />
-                </section>
                 {/* 스타일 */}
                 <style>{`
                     .tracker-root {
@@ -248,6 +259,37 @@ const AttendanceTracker: React.FC = () => {
                         font-family: 'Pretendard', -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen', sans-serif;
                         letter-spacing: -0.01em;
                         line-height: 1.45;
+                    }
+                    /* 2컬럼 레이아웃 */
+                    .tracker-layout {
+                        display: flex;
+                        flex-direction: column;
+                        flex: 1;
+                    }
+                    .tracker-left { flex: 1; }
+                    .tracker-right {
+                        display: none;
+                    }
+                    @media (min-width: 768px) {
+                        .tracker-layout {
+                            flex-direction: row;
+                            align-items: flex-start;
+                            gap: 2rem;
+                            max-width: 960px;
+                            margin: 0 auto;
+                            padding: 0 1.5rem;
+                            width: 100%;
+                        }
+                        .tracker-left { flex: 1; min-width: 0; }
+                        .tracker-right {
+                            display: block;
+                            flex: 1;
+                            min-width: 0;
+                            position: sticky;
+                            top: 1.5rem;
+                            padding-top: 1.25rem;
+                        }
+                        .tracker-calendar-mobile { display: none; }
                     }
                     .tracker-header {
                         padding: 2rem 0 1rem 0;
