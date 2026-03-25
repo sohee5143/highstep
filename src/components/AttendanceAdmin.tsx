@@ -459,7 +459,8 @@ const AttendanceAdmin: React.FC = () => {
           width: 100%;
           display: flex;
           justify-content: center;
-          padding: 0 0.5rem 1.25rem 0.5rem;
+          max-width: 960px;
+          padding: 0 1rem 1.25rem 1rem;
           box-sizing: border-box;
         }
         .admin-home-btn {
@@ -626,6 +627,7 @@ const AttendanceAdmin: React.FC = () => {
         }
         .admin-list-item {
           background: #181818;
+        }
         .admin-nav-btn {
           display: inline-flex;
           justify-content: center;
