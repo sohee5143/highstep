@@ -8,7 +8,6 @@ interface DbMember {
   gender: string | null;
   required_attendance: number | null;
   base_attendance_count: number | null;
-  status: string | null;
 }
 
 interface DbCheckin {
@@ -77,7 +76,7 @@ export async function fetchAttendanceSummary(options?: { useCache?: boolean }): 
     const [membersRes, checkinsRes, sessions] = await Promise.all([
       supabase
         .from<DbMember>('members')
-        .select('id, name, type, gender, required_attendance, base_attendance_count, status'),
+        .select('id, name, type, gender, required_attendance, base_attendance_count'),
       supabase
         .from<DbCheckin>('checkins')
         .select('member_id, session_id, kind'),
@@ -134,14 +133,16 @@ export async function fetchAttendanceSummary(options?: { useCache?: boolean }): 
     const mid = m.id;
     const baseAttendance = m.base_attendance_count || 0;
     const extraDb = extraByMemberId[mid] || 0;
+    const attendanceCount = baseAttendance + extraDb;
+    const requiredAttendance = m.required_attendance || 0;
 
     return {
       type: m.type || '',
       gender: m.gender || '',
       name: m.name,
-      requiredAttendance: m.required_attendance || 0,
-      attendanceCount: baseAttendance + extraDb,
-      status: m.status || 'X',
+      requiredAttendance,
+      attendanceCount,
+      status: attendanceCount >= requiredAttendance ? 'O' : 'X',
       records: perMemberPlace[mid] || {},
     };
   });

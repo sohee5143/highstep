@@ -4,7 +4,7 @@ export interface AttendanceRecord {
     name: string;
     requiredAttendance: number;
     attendanceCount: number;
-    status: string; // X, 부상 등
+  status: string; // O 또는 X (표시용)
     records: {
     [scheduleKey: string]: number | null | string;
     };
