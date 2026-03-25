@@ -19,7 +19,24 @@ interface DbCheckin {
 
 interface DbSession {
   id: number;
-  place: string;
+  place: string | null;
+  date?: string | null;
+  season?: string | null;
+  workout_schedule_id?: number | null;
+  workout_schedule?: {
+    id: number;
+    date: string;
+    gyms: {
+      id: number;
+      name: string;
+      icon_url: string | null;
+    } | null;
+  } | null;
+}
+
+interface SessionMeta {
+  key: string;
+  name: string;
 }
 
 let cachedValue: AttendanceRecord[] | null = null;
@@ -38,16 +55,33 @@ export async function fetchAttendanceSummary(options?: { useCache?: boolean }): 
   }
 
   const run = async (): Promise<AttendanceRecord[]> => {
-    const [membersRes, checkinsRes, sessionsRes] = await Promise.all([
+    const sessionsPromise = (async (): Promise<DbSession[]> => {
+      const { data, error } = await supabase
+        .from<DbSession>('sessions')
+        .select('id, place, date, season, workout_schedule_id, workout_schedule:workout_schedule_id(id, date, gyms(id, name, icon_url))');
+
+      if (!error && data) return data;
+
+      const { data: legacyData, error: legacyError } = await supabase
+        .from<DbSession>('sessions')
+        .select('id, place, date, season');
+
+      if (legacyError) {
+        console.error('[client] sessions 조회 실패', legacyError);
+        return [];
+      }
+
+      return legacyData || [];
+    })();
+
+    const [membersRes, checkinsRes, sessions] = await Promise.all([
       supabase
         .from<DbMember>('members')
         .select('id, name, type, gender, required_attendance, base_attendance_count, status'),
       supabase
         .from<DbCheckin>('checkins')
         .select('member_id, session_id, kind'),
-      supabase
-        .from<DbSession>('sessions')
-        .select('id, place'),
+      sessionsPromise,
     ]);
 
     const { data: members, error: membersError } = membersRes;
@@ -62,15 +96,15 @@ export async function fetchAttendanceSummary(options?: { useCache?: boolean }): 
       return [];
     }
 
-    const { data: sessions, error: sessionsError } = sessionsRes;
-    if (sessionsError) {
-      console.error('[client] sessions 조회 실패', sessionsError);
-      return [];
-    }
-
-  const sessionPlaceById: Record<number, string> = {};
+  const sessionMetaById: Record<number, SessionMeta> = {};
   (sessions || []).forEach((s) => {
-    sessionPlaceById[s.id] = s.place;
+    const scheduleId = s.workout_schedule?.id || s.workout_schedule_id;
+    const gymName = s.workout_schedule?.gyms?.name || s.place;
+
+    if (!gymName) return;
+
+    const key = scheduleId ? `schedule:${scheduleId}` : `legacy:${gymName}`;
+    sessionMetaById[s.id] = { key, name: gymName };
   });
 
   const extraByMemberId: Record<number, number> = {};
@@ -79,19 +113,19 @@ export async function fetchAttendanceSummary(options?: { useCache?: boolean }): 
   (checkins || []).forEach((c) => {
     const mid = c.member_id;
     const sid = c.session_id;
-    const place = sessionPlaceById[sid];
+    const sessionMeta = sessionMetaById[sid];
     const kind = c.kind;
 
-    if (!place) return;
+    if (!sessionMeta) return;
 
     if (!perMemberPlace[mid]) perMemberPlace[mid] = {};
 
     if (kind === '25분기 반영') {
-      perMemberPlace[mid][place] = '25분기 반영';
+      perMemberPlace[mid][sessionMeta.key] = '25분기 반영';
     } else {
       extraByMemberId[mid] = (extraByMemberId[mid] || 0) + 1;
-      if (perMemberPlace[mid][place] !== '25분기 반영') {
-        perMemberPlace[mid][place] = 1;
+      if (perMemberPlace[mid][sessionMeta.key] !== '25분기 반영') {
+        perMemberPlace[mid][sessionMeta.key] = 1;
       }
     }
   });

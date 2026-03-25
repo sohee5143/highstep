@@ -1,15 +1,32 @@
 import { supabase } from './supabaseClient';
-import { CURRENT_SEASON } from '../types';
+import { CURRENT_SEASON, PlaceInfo } from '../types';
 
 interface DbSession {
+  id: number;
   place: string;
   date: string | null;
   season: string | null;
+  workout_schedule_id?: number | null;
+  workout_schedule?: {
+    id: number;
+    date: string;
+    gyms: {
+      id: number;
+      name: string;
+      icon_url: string | null;
+    } | null;
+  } | null;
 }
 
-export interface PlaceInfo {
-  name: string;
-  dateLabel: string | null;
+interface DbWorkoutSchedule {
+  id: number;
+  date: string | null;
+  season: string | null;
+  gyms: {
+    id: number;
+    name: string;
+    icon_url: string | null;
+  } | null;
 }
 
 let cachedValue: PlaceInfo[] | null = null;
@@ -29,6 +46,15 @@ function formatDateLabel(dateStr: string | null): string | null {
   return `${month}/${day}`;
 }
 
+function toDateOrderValue(dateLabel: string | null): number {
+  if (!dateLabel) return Number.MAX_SAFE_INTEGER;
+  const [monthStr, dayStr] = dateLabel.split('/');
+  const month = Number.parseInt(monthStr, 10);
+  const day = Number.parseInt(dayStr, 10);
+  if (!Number.isFinite(month) || !Number.isFinite(day)) return Number.MAX_SAFE_INTEGER;
+  return month * 100 + day;
+}
+
 export async function fetchPlacesForCurrentSeason(options?: { useCache?: boolean }): Promise<PlaceInfo[]> {
   const useCache = options?.useCache !== false;
   if (useCache) {
@@ -37,48 +63,66 @@ export async function fetchPlacesForCurrentSeason(options?: { useCache?: boolean
   }
 
   const run = async (): Promise<PlaceInfo[]> => {
-  const { data, error } = await supabase
-    .from<DbSession>('sessions')
-    .select('place, date, season')
-    .eq('season', CURRENT_SEASON);
+    const { data: schedules, error: scheduleError } = await supabase
+      .from<DbWorkoutSchedule>('workout_schedule')
+      .select('id, date, season, gyms(id, name, icon_url)')
+      .eq('season', CURRENT_SEASON)
+      .order('date', { ascending: true });
 
-  if (error || !data) {
-    console.error('[client] sessions(place) 조회 실패', error);
-    return [];
-  }
+    const { data, error } = await supabase
+      .from<DbSession>('sessions')
+      .select('id, place, date, season, workout_schedule_id, workout_schedule:workout_schedule_id(id, date, gyms(id, name, icon_url))')
+      .eq('season', CURRENT_SEASON);
 
-  const earliestDateByPlace: Record<string, string | null> = {};
-
-  data.forEach((s) => {
-    const place = s.place;
-    if (!place) return;
-    const dateStr = s.date;
-
-    if (!earliestDateByPlace[place]) {
-      earliestDateByPlace[place] = dateStr;
-      return;
+    if ((scheduleError || !schedules) && (error || !data)) {
+      console.error('[client] sessions(place) 조회 실패', error || scheduleError);
+      return [];
     }
 
-    if (dateStr && earliestDateByPlace[place]) {
-      if (dateStr < earliestDateByPlace[place]!) {
-        earliestDateByPlace[place] = dateStr;
+    const byKey: Record<string, PlaceInfo> = {};
+
+    (schedules || [])
+      .filter((s) => !!s.gyms?.name)
+      .forEach((s) => {
+        const key = `schedule:${s.id}`;
+        byKey[key] = {
+          key,
+          name: s.gyms!.name,
+          dateLabel: formatDateLabel(s.date),
+        };
+      });
+
+    (data || []).forEach((s) => {
+      const scheduleId = s.workout_schedule?.id || s.workout_schedule_id;
+      const name = s.workout_schedule?.gyms?.name || s.place;
+      const date = s.workout_schedule?.date || s.date;
+
+      if (!name) return;
+
+      const key = scheduleId ? `schedule:${scheduleId}` : `legacy:${name}`;
+      const nextDateLabel = formatDateLabel(date || null);
+      const existing = byKey[key];
+
+      if (!existing) {
+        byKey[key] = {
+          key,
+          name,
+          dateLabel: nextDateLabel,
+        };
+        return;
       }
-    }
-  });
 
-  const places: PlaceInfo[] = Object.keys(earliestDateByPlace)
-    .sort((a, b) => {
-      const da = earliestDateByPlace[a] || '';
-      const db = earliestDateByPlace[b] || '';
-      if (da && db && da !== db) return da < db ? -1 : 1;
-      return a.localeCompare(b, 'ko-KR');
-    })
-    .map((name) => ({
-      name,
-      dateLabel: formatDateLabel(earliestDateByPlace[name] || null),
-    }));
+      if (!existing.dateLabel && nextDateLabel) {
+        existing.dateLabel = nextDateLabel;
+      }
+    });
 
-    return places;
+    return Object.values(byKey).sort((a, b) => {
+      const dateA = toDateOrderValue(a.dateLabel);
+      const dateB = toDateOrderValue(b.dateLabel);
+      if (dateA !== dateB) return dateA - dateB;
+      return a.name.localeCompare(b.name, 'ko-KR');
+    });
   };
 
   const p = run();

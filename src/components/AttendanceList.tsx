@@ -1,9 +1,9 @@
 import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { AttendanceRecord } from '../types';
+import { AttendanceRecord, PlaceInfo } from '../types';
 import { loadAllChecks } from '../utils/localAttendance';
 import { fetchAttendanceSummary } from '../utils/attendanceSummary';
-import { fetchPlacesForCurrentSeason, PlaceInfo } from '../utils/places';
+import { fetchPlacesForCurrentSeason } from '../utils/places';
 import { COLORS } from '../constants/colors';
 
 const AttendanceList: React.FC = () => {
@@ -71,7 +71,7 @@ const AttendanceList: React.FC = () => {
     let prev: string | null = null;
     places.forEach((p, idx) => {
       const label = getMonthLabel(p);
-      map[p.name] = idx === 0 || label !== prev;
+      map[p.key] = idx === 0 || label !== prev;
       prev = label;
     });
     return map;
@@ -117,8 +117,8 @@ const AttendanceList: React.FC = () => {
                     <tr>
                       {places.map((p) => (
                         <th
-                          key={p.name}
-                          className={monthBoundaryByPlace[p.name] ? 'list-place-header is-boundary' : 'list-place-header'}
+                          key={p.key}
+                          className={monthBoundaryByPlace[p.key] ? 'list-place-header is-boundary' : 'list-place-header'}
                         >
                           {p.name}
                           {p.dateLabel && (
@@ -142,14 +142,14 @@ const AttendanceList: React.FC = () => {
                             {record.status}
                           </td>
                           {places.map((p) => {
-                            const place = p.name;
-                            const value = record.records[place];
+                            const placeKey = p.key;
+                            const value = record.records[placeKey];
                             const display = value === 1 ? 'O' : value || '';
                             return (
                               <td
-                                key={place}
+                                key={placeKey}
                                 className={
-                                  monthBoundaryByPlace[place]
+                                  monthBoundaryByPlace[placeKey]
                                     ? 'list-cell-center is-boundary'
                                     : 'list-cell-center'
                                 }
@@ -171,7 +171,7 @@ const AttendanceList: React.FC = () => {
                   const isDbBacked = dbMemberNames.includes(record.name);
                   const extra = isDbBacked ? 0 : (extraByName[record.name] || 0);
                   const effectiveCount = record.attendanceCount + extra;
-                  const placesAttended = places.filter((p) => record.records[p.name]);
+                  const placesAttended = places.filter((p) => record.records[p.key]);
 
                   return (
                     <div key={record.name} className="list-person-card">
@@ -195,13 +195,13 @@ const AttendanceList: React.FC = () => {
                       {placesAttended.length > 0 && (
                         <div className="list-person-places">
                           {placesAttended.map((p) => {
-                            const place = p.name;
-                            const value = record.records[place];
+                            const placeKey = p.key;
+                            const value = record.records[placeKey];
                             const isQuarter = value === '25분기 반영';
                             return (
-                              <div key={place} className="list-person-place-row">
+                              <div key={placeKey} className="list-person-place-row">
                                 <div className="list-person-place-left">
-                                  <span className="list-person-place-name">{place}</span>
+                                  <span className="list-person-place-name">{p.name}</span>
                                   {p.dateLabel && (
                                     <span className="list-person-place-date">{p.dateLabel}</span>
                                   )}

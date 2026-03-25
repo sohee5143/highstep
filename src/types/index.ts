@@ -6,7 +6,7 @@ export interface AttendanceRecord {
     attendanceCount: number;
     status: string; // X, 부상 등
     records: {
-        [place: string]: number | null | string;
+    [scheduleKey: string]: number | null | string;
     };
 }
 // 현재 시즌 식별자 (sessions.season 컬럼과 매칭)
@@ -23,5 +23,12 @@ export interface ScheduleEntry {
   id: number;
   date: string; // 'YYYY-MM-DD'
   gym_id: number;
-  gyms: Gym; // Supabase JOIN 결과
+  season?: string | null;
+  gyms: Gym | null; // Supabase JOIN 결과
+}
+
+export interface PlaceInfo {
+  key: string;
+  name: string;
+  dateLabel: string | null;
 }

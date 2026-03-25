@@ -2,6 +2,9 @@ export interface LocalCheck {
   name: string;
   place: string;
   timestamp: number;
+  scheduleDate?: string;
+  scheduleKey?: string;
+  sessionId?: number;
 }
 
 const STORAGE_KEY = 'highstep_attendance_checks_v1';
@@ -18,7 +21,10 @@ export function loadChecks(): LocalCheck[] {
         item &&
         typeof item.name === 'string' &&
         typeof item.place === 'string' &&
-        typeof item.timestamp === 'number'
+        typeof item.timestamp === 'number' &&
+        (typeof item.scheduleDate === 'undefined' || typeof item.scheduleDate === 'string') &&
+        (typeof item.scheduleKey === 'undefined' || typeof item.scheduleKey === 'string') &&
+        (typeof item.sessionId === 'undefined' || typeof item.sessionId === 'number')
     );
   } catch {
     return [];
@@ -64,6 +70,14 @@ export interface NameSummary {
   perPlaceLatest: Record<string, number>;
 }
 
+function toComparableTimestamp(check: LocalCheck): number {
+  if (check.scheduleDate) {
+    const parsed = new Date(`${check.scheduleDate}T12:00:00`).getTime();
+    if (!Number.isNaN(parsed)) return parsed;
+  }
+  return check.timestamp;
+}
+
 export function getSummaryForName(name: string): NameSummary {
   const checks = getChecksForName(name);
   const perPlaceCount: Record<string, number> = {};
@@ -71,10 +85,12 @@ export function getSummaryForName(name: string): NameSummary {
   let totalExtra = 0;
 
   for (const check of checks) {
+    const key = check.scheduleKey || `legacy:${check.place}`;
+    const comparableTimestamp = toComparableTimestamp(check);
     totalExtra += 1;
-    perPlaceCount[check.place] = (perPlaceCount[check.place] || 0) + 1;
-    if (!perPlaceLatest[check.place] || perPlaceLatest[check.place] < check.timestamp) {
-      perPlaceLatest[check.place] = check.timestamp;
+    perPlaceCount[key] = (perPlaceCount[key] || 0) + 1;
+    if (!perPlaceLatest[key] || perPlaceLatest[key] < comparableTimestamp) {
+      perPlaceLatest[key] = comparableTimestamp;
     }
   }
 

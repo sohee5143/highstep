@@ -1,11 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { COLORS } from '../constants/colors';
-import { CURRENT_SEASON } from '../types';
+import { ScheduleEntry } from '../types';
 import { addCheck, removeCheck } from '../utils/localAttendance';
 import { supabase } from '../utils/supabaseClient';
 import AdminGymManager from './AdminGymManager';
 import AdminCalendarEditor from './AdminCalendarEditor';
+import { fetchScheduleByDate, findOrCreateSessionForSchedule } from '../utils/workoutSchedule';
 
 type AdminTab = 'checkin' | 'gyms' | 'schedule';
 
@@ -13,6 +14,9 @@ interface CheckedMember {
   name: string;
   place: string;
   timestamp: number;
+  scheduleDate: string;
+  scheduleKey: string;
+  sessionId: number;
 }
 
 interface Member {
@@ -25,13 +29,15 @@ interface Member {
 const AttendanceAdmin: React.FC = () => {
   const [activeTab, setActiveTab] = useState<AdminTab>('checkin');
   const [selectedNames, setSelectedNames] = useState<string[]>([]);
-  const [selectedPlace, setSelectedPlace] = useState('');
+  const [selectedDate, setSelectedDate] = useState(new Date().toISOString().slice(0, 10));
+  const [scheduleOptions, setScheduleOptions] = useState<ScheduleEntry[]>([]);
+  const [selectedScheduleId, setSelectedScheduleId] = useState<number | null>(null);
   const [checkedMembers, setCheckedMembers] = useState<CheckedMember[]>([]);
   const [lastChecked, setLastChecked] = useState<CheckedMember | null>(null);
   const [currentTime, setCurrentTime] = useState(new Date());
   const [members, setMembers] = useState<Member[]>([]);
-  const [placeOptions, setPlaceOptions] = useState<string[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [isScheduleLoading, setIsScheduleLoading] = useState(true);
 
   useEffect(() => {
     const timer = setInterval(() => setCurrentTime(new Date()), 1000);
@@ -49,31 +55,11 @@ const AttendanceAdmin: React.FC = () => {
 
       setMembers(data || []);
     };
-    const fetchPlaces = async () => {
-      const { data, error } = await supabase
-        .from<{ place: string | null }>('sessions')
-        .select('place');
-
-      if (error || !data) {
-        console.error('sessions(place) load failed', error);
-        return;
-      }
-
-      const unique = Array.from(
-        new Set(
-          data
-            .map((s) => s.place)
-            .filter((p): p is string => !!p)
-        )
-      ).sort((a, b) => a.localeCompare(b, 'ko-KR'));
-
-      setPlaceOptions(unique);
-    };
 
     const load = async () => {
       setIsLoading(true);
       try {
-        await Promise.all([fetchMembers(), fetchPlaces()]);
+        await fetchMembers();
       } finally {
         setIsLoading(false);
       }
@@ -83,24 +69,54 @@ const AttendanceAdmin: React.FC = () => {
     return () => clearInterval(timer);
   }, []);
 
+  useEffect(() => {
+    let cancelled = false;
+
+    const loadSchedules = async () => {
+      setIsScheduleLoading(true);
+      try {
+        const data = await fetchScheduleByDate(selectedDate);
+        if (cancelled) return;
+        setScheduleOptions(data);
+        setSelectedScheduleId((prev) => {
+          if (prev && data.some((schedule) => schedule.id === prev)) return prev;
+          return data.length > 0 ? data[0].id : null;
+        });
+      } finally {
+        if (!cancelled) setIsScheduleLoading(false);
+      }
+    };
+
+    loadSchedules();
+    return () => {
+      cancelled = true;
+    };
+  }, [selectedDate]);
+
   const toggleName = (name: string) => {
     setSelectedNames((prev) =>
       prev.includes(name) ? prev.filter((n) => n !== name) : [...prev, name]
     );
   };
 
-  const handlePlaceChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setSelectedPlace(e.target.value);
-  };
-
   const handleCheckAttendance = async () => {
-    if (selectedNames.length === 0 || !selectedPlace) return;
+    const selectedSchedule = scheduleOptions.find((schedule) => schedule.id === selectedScheduleId);
+    if (selectedNames.length === 0 || !selectedSchedule) return;
+
+    const sessionId = await findOrCreateSessionForSchedule(selectedSchedule);
+    if (!sessionId) return;
+
+    const schedulePlace = selectedSchedule.gyms?.name || '이름 없는 암장';
+    const scheduleKey = `schedule:${selectedSchedule.id}`;
 
     const now = Date.now();
     const newCheckedList: CheckedMember[] = selectedNames.map((name) => ({
       name,
-      place: selectedPlace,
+      place: schedulePlace,
       timestamp: now,
+      scheduleDate: selectedSchedule.date,
+      scheduleKey,
+      sessionId,
     }));
 
     setCheckedMembers([...checkedMembers, ...newCheckedList]);
@@ -110,9 +126,6 @@ const AttendanceAdmin: React.FC = () => {
     newCheckedList.forEach((c) => addCheck(c));
 
     try {
-      const ts = new Date(now);
-      const isoDate = ts.toISOString().slice(0, 10);
-
       const { data: members, error: membersError } = await supabase
         .from<Member>('members')
         .select('id, name')
@@ -121,31 +134,6 @@ const AttendanceAdmin: React.FC = () => {
       if (membersError || !members) {
         console.error('admin.checkins members 조회 실패', membersError);
         throw membersError;
-      }
-
-      let sessionId: number | null = null;
-      const { data: existingSessions, error: sessionError } = await supabase
-        .from<{ id: number; date: string; place: string }>('sessions')
-        .select('id')
-        .eq('date', isoDate)
-        .eq('place', selectedPlace)
-        .limit(1);
-
-      if (!sessionError && existingSessions && existingSessions.length > 0) {
-        sessionId = existingSessions[0].id;
-      } else {
-        const { data: newSession, error: newSessionError } = await supabase
-          .from<{ id: number; date: string; place: string; season: string }>('sessions')
-          .insert([{ date: isoDate, place: selectedPlace, season: CURRENT_SEASON }])
-          .select('id')
-          .single();
-
-        if (newSessionError || !newSession) {
-          console.error('admin.checkins session 생성 실패', newSessionError);
-          throw newSessionError;
-        }
-
-        sessionId = newSession.id;
       }
 
       for (const m of members) {
@@ -178,13 +166,13 @@ const AttendanceAdmin: React.FC = () => {
 
     // Reset selections
     setSelectedNames([]);
-    setSelectedPlace('');
 
     // Auto-hide success feedback after 2 seconds
     setTimeout(() => setLastChecked(null), 2000);
   };
 
-  const isFormValid = selectedNames.length > 0 && selectedPlace;
+  const selectedSchedule = scheduleOptions.find((schedule) => schedule.id === selectedScheduleId) || null;
+  const isFormValid = selectedNames.length > 0 && !!selectedSchedule;
   const formattedTime = currentTime.toLocaleTimeString('ko-KR', {
     hour: '2-digit',
     minute: '2-digit',
@@ -195,8 +183,8 @@ const AttendanceAdmin: React.FC = () => {
     day: 'numeric',
   });
 
-  const formatDate = (timestamp: number) => {
-    return new Date(timestamp).toLocaleDateString('ko-KR', {
+  const formatDate = (dateString: string) => {
+    return new Date(dateString).toLocaleDateString('ko-KR', {
       month: 'numeric',
       day: 'numeric',
     });
@@ -214,7 +202,7 @@ const AttendanceAdmin: React.FC = () => {
       <section className="admin-status">
         <h2 className="admin-title">관리자 출석 관리</h2>
         <span className="admin-time">{formattedDate} {formattedTime}</span>
-        <span className="admin-count">오늘 체크된 부원: {checkedMembers.length}명</span>
+        <span className="admin-count">이번 화면에서 체크된 부원: {checkedMembers.length}명</span>
       </section>
       {/* 탭 */}
       <div style={{ display: 'flex', gap: 6, padding: '0.5rem 0.5rem 0', maxWidth: 480, width: '100%', margin: '0 auto', boxSizing: 'border-box' }}>
@@ -247,7 +235,7 @@ const AttendanceAdmin: React.FC = () => {
       {/* 체크 성공 메시지 */}
       {activeTab === 'checkin' && lastChecked && (
         <div className="admin-card admin-success-card">
-          <span className="admin-success-title">✓ {lastChecked.name}님이 {lastChecked.place}에 출석 체크되었습니다</span>
+          <span className="admin-success-title">✓ {lastChecked.name}님이 {formatDate(lastChecked.scheduleDate)} {lastChecked.place} 일정에 출석 체크되었습니다</span>
         </div>
       )}
       {/* 탭별 콘텐츠 */}
@@ -291,28 +279,60 @@ const AttendanceAdmin: React.FC = () => {
               })
             )}
           </div>
-          <label htmlFor="place-input" className="admin-label">운동 장소 (직접 입력 가능)</label>
+          <label htmlFor="schedule-date-input" className="admin-label">정기운동 날짜</label>
           <input
-            id="place-input"
-            list="place-options"
-            value={selectedPlace}
-            onChange={handlePlaceChange}
-            aria-label="운동 장소 입력 또는 선택"
+            id="schedule-date-input"
+            type="date"
+            value={selectedDate}
+            onChange={(e) => setSelectedDate(e.target.value)}
+            aria-label="정기운동 날짜 선택"
             className="admin-select"
-            placeholder="예) 문래 더클"
           />
-          <datalist id="place-options">
-            {placeOptions.map((place) => (
-              <option key={place} value={place} />
-            ))}
-          </datalist>
+          <label className="admin-label">일정 선택</label>
+          <div className="admin-schedule-list" aria-label="정기운동 일정 목록">
+            {isScheduleLoading ? (
+              <div className="admin-loading" aria-label="일정 로딩 중">
+                <div className="admin-spinner" />
+              </div>
+            ) : scheduleOptions.length === 0 ? (
+              <div className="admin-schedule-empty">선택한 날짜에 등록된 정기운동 일정이 없습니다.</div>
+            ) : (
+              scheduleOptions.map((schedule) => {
+                const gymName = schedule.gyms?.name || '이름 없는 암장';
+                const isSelected = schedule.id === selectedScheduleId;
+                return (
+                  <label
+                    key={schedule.id}
+                    className={`admin-schedule-item${isSelected ? ' admin-schedule-item-selected' : ''}`}
+                  >
+                    <input
+                      type="radio"
+                      name="selected-schedule"
+                      className="admin-member-checkbox"
+                      checked={isSelected}
+                      onChange={() => setSelectedScheduleId(schedule.id)}
+                    />
+                    {schedule.gyms?.icon_url ? (
+                      <img src={schedule.gyms.icon_url} alt={gymName} className="admin-schedule-icon" />
+                    ) : (
+                      <div className="admin-schedule-icon admin-schedule-icon-fallback">{gymName[0]}</div>
+                    )}
+                    <div className="admin-schedule-text">
+                      <span className="admin-schedule-name">{gymName}</span>
+                      <span className="admin-schedule-date">{formatDate(schedule.date)}</span>
+                    </div>
+                  </label>
+                );
+              })
+            )}
+          </div>
           <button
             onClick={handleCheckAttendance}
             disabled={!isFormValid}
             aria-label="출석 체크 완료"
             className={"admin-btn" + (!isFormValid ? " disabled" : "")}
           >
-            {isFormValid ? '✓ 출석 체크' : '부원과 장소를 선택하세요'}
+            {isFormValid ? '✓ 출석 체크' : '부원과 일정을 선택하세요'}
           </button>
         </div>
         {/* 최근 체크 리스트 카드 */}
@@ -324,7 +344,7 @@ const AttendanceAdmin: React.FC = () => {
                 <div key={idx} className="admin-list-item">
                   <div className="admin-list-left">
                     <span className="admin-list-name">{member.name}</span>
-                    <span className="admin-list-place">{member.place}{formatDate(member.timestamp)}</span>
+                    <span className="admin-list-place">{formatDate(member.scheduleDate)} · {member.place}</span>
                   </div>
                   <button
                     type="button"
@@ -346,9 +366,6 @@ const AttendanceAdmin: React.FC = () => {
                       removeCheck(member);
 
                       try {
-                        const ts = new Date(member.timestamp);
-                        const isoDate = ts.toISOString().slice(0, 10);
-
                         const { data: dbMember, error: memberError } = await supabase
                           .from<Member>('members')
                           .select('id')
@@ -362,25 +379,11 @@ const AttendanceAdmin: React.FC = () => {
 
                         const memberId = dbMember[0].id;
 
-                        const { data: sessions, error: sessionError } = await supabase
-                          .from<{ id: number; date: string; place: string }>('sessions')
-                          .select('id')
-                          .eq('date', isoDate)
-                          .eq('place', member.place)
-                          .limit(1);
-
-                        if (sessionError || !sessions || !sessions.length) {
-                          console.error('admin.checkins delete sessions 조회 실패', sessionError);
-                          return;
-                        }
-
-                        const sessionId = sessions[0].id;
-
                         const { error: deleteError } = await supabase
                           .from('checkins')
                           .delete()
                           .eq('member_id', memberId)
-                          .eq('session_id', sessionId);
+                          .eq('session_id', member.sessionId);
 
                         if (deleteError) {
                           console.error('admin.checkins delete 실패', deleteError);
@@ -561,6 +564,67 @@ const AttendanceAdmin: React.FC = () => {
         }
         .admin-select:focus {
           box-shadow: 0 0 0 2px ${COLORS.primary};
+        }
+        .admin-schedule-list {
+          background: #181818;
+          border-radius: 12px;
+          padding: 0.35rem;
+          display: flex;
+          flex-direction: column;
+          gap: 0.35rem;
+          min-height: 72px;
+        }
+        .admin-schedule-item {
+          display: flex;
+          align-items: center;
+          gap: 0.6rem;
+          padding: 0.55rem 0.65rem;
+          border-radius: 10px;
+          cursor: pointer;
+          background: #202020;
+          transition: background 0.15s, box-shadow 0.15s;
+        }
+        .admin-schedule-item:hover {
+          background: #262626;
+        }
+        .admin-schedule-item-selected {
+          box-shadow: 0 0 0 1px rgba(227,176,75,0.6);
+          background: rgba(227,176,75,0.12);
+        }
+        .admin-schedule-icon {
+          width: 26px;
+          height: 26px;
+          border-radius: 6px;
+          object-fit: cover;
+          flex-shrink: 0;
+        }
+        .admin-schedule-icon-fallback {
+          background: ${COLORS.primary};
+          color: #111;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          font-size: 0.8rem;
+          font-weight: bold;
+        }
+        .admin-schedule-text {
+          display: flex;
+          flex-direction: column;
+          gap: 0.1rem;
+        }
+        .admin-schedule-name {
+          color: ${COLORS.textMain};
+          font-size: 0.92rem;
+          font-weight: 600;
+        }
+        .admin-schedule-date {
+          color: ${COLORS.textSub};
+          font-size: 0.8rem;
+        }
+        .admin-schedule-empty {
+          color: ${COLORS.textSub};
+          font-size: 0.88rem;
+          padding: 0.75rem;
         }
         .admin-btn {
           padding: 0.8rem 1.2rem;

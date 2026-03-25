@@ -4,7 +4,8 @@ import { AttendanceRecord } from '../types';
 import { getSummaryForName } from '../utils/localAttendance';
 import { fetchAttendanceSummary } from '../utils/attendanceSummary';
 import WorkoutCalendar from './WorkoutCalendar';
-import { fetchPlacesForCurrentSeason, PlaceInfo } from '../utils/places';
+import { fetchPlacesForCurrentSeason } from '../utils/places';
+import { PlaceInfo } from '../types';
 import { COLORS } from '../constants/colors';
 
 const AttendanceTracker: React.FC = () => {
@@ -181,14 +182,14 @@ const AttendanceTracker: React.FC = () => {
                                         <span className="tracker-attended-label">정기운동 출석 리스트</span>
                                         <div className="tracker-attended-items">
                                             {places.filter((p) => {
-                                                const place = p.name;
-                                                const base = record.records[place];
-                                                const extraCount = extraSummary?.perPlaceCount[place] || 0;
+                                                const scheduleKey = p.key;
+                                                const base = record.records[scheduleKey];
+                                                const extraCount = extraSummary?.perPlaceCount[scheduleKey] || 0;
                                                 return base || extraCount > 0;
                                             }).map((p) => {
-                                                const place = p.name;
-                                                const base = record.records[place];
-                                                const latestTs = extraSummary?.perPlaceLatest[place];
+                                                const scheduleKey = p.key;
+                                                const base = record.records[scheduleKey];
+                                                const latestTs = extraSummary?.perPlaceLatest[scheduleKey];
                                                 let dateLabel: string | null = null;
                                                 if (latestTs) {
                                                     const d = new Date(latestTs);
@@ -199,9 +200,9 @@ const AttendanceTracker: React.FC = () => {
                                                     dateLabel = p.dateLabel;
                                                 }
                                                 return (
-                                                    <div key={place} className="tracker-attended-item">
+                                                    <div key={scheduleKey} className="tracker-attended-item">
                                                         <div className="tracker-attended-left">
-                                                            <span className="tracker-attended-place">{place}</span>
+                                                            <span className="tracker-attended-place">{p.name}</span>
                                                             {dateLabel && (
                                                                 <span className="tracker-attended-date">{dateLabel}</span>
                                                             )}
@@ -213,9 +214,9 @@ const AttendanceTracker: React.FC = () => {
                                                 );
                                             })}
                                             {!places.some((p) => {
-                                                const place = p.name;
-                                                const base = record.records[place];
-                                                const extraCount = extraSummary?.perPlaceCount[place] || 0;
+                                                const scheduleKey = p.key;
+                                                const base = record.records[scheduleKey];
+                                                const extraCount = extraSummary?.perPlaceCount[scheduleKey] || 0;
                                                 return base || extraCount > 0;
                                             }) && (
                                                 <span className="tracker-no-attendance">아직 출석 기록이 없습니다</span>
