@@ -19,6 +19,14 @@ const AttendanceList: React.FC = () => {
     extraByName[c.name] = (extraByName[c.name] || 0) + 1;
   });
 
+  const getStatusDisplay = React.useCallback((record: AttendanceRecord, effectiveCount: number) => {
+    const isComplete = effectiveCount >= record.requiredAttendance;
+    return {
+      isComplete,
+      label: isComplete ? '✓' : 'X',
+    };
+  }, []);
+
   useEffect(() => {
     let cancelled = false;
     const fetchSummary = async () => {
@@ -133,13 +141,14 @@ const AttendanceList: React.FC = () => {
                       const isDbBacked = dbMemberNames.includes(record.name);
                       const extra = isDbBacked ? 0 : (extraByName[record.name] || 0);
                       const effectiveCount = record.attendanceCount + extra;
+                      const statusDisplay = getStatusDisplay(record, effectiveCount);
                       return (
                         <tr key={record.name}>
                           <td className="list-name-cell">{record.name}</td>
                           <td>{effectiveCount}</td>
                           <td>{record.requiredAttendance}</td>
-                          <td className={record.status === 'O' || record.status === '정상' ? 'list-status-ok' : 'list-status-bad'}>
-                            {record.status}
+                          <td className={statusDisplay.isComplete ? 'list-status-ok' : 'list-status-bad'}>
+                            {statusDisplay.label}
                           </td>
                           {places.map((p) => {
                             const placeKey = p.key;
@@ -171,26 +180,33 @@ const AttendanceList: React.FC = () => {
                   const isDbBacked = dbMemberNames.includes(record.name);
                   const extra = isDbBacked ? 0 : (extraByName[record.name] || 0);
                   const effectiveCount = record.attendanceCount + extra;
+                  const statusDisplay = getStatusDisplay(record, effectiveCount);
                   const placesAttended = places.filter((p) => record.records[p.key]);
 
                   return (
                     <div key={record.name} className="list-person-card">
                       <div className="list-person-header">
                         <div className="list-person-name">{record.name}</div>
-                        <div
-                          className={
-                            record.status === 'O' || record.status === '정상'
-                              ? 'list-status-chip list-status-chip-ok'
-                              : 'list-status-chip list-status-chip-bad'
-                          }
-                        >
-                          {record.status}
+                        <div className="list-person-header-right">
+                          <span
+                            className={
+                              statusDisplay.isComplete
+                                ? 'list-count-badge list-count-badge-ok'
+                                : 'list-count-badge list-count-badge-bad'
+                            }
+                          >
+                            출석 {effectiveCount} / {record.requiredAttendance}
+                          </span>
+                          <div
+                            className={
+                              statusDisplay.isComplete
+                                ? 'list-status-chip list-status-chip-ok'
+                                : 'list-status-chip list-status-chip-bad'
+                            }
+                          >
+                            {statusDisplay.label}
+                          </div>
                         </div>
-                      </div>
-                      <div className="list-person-meta">
-                        <span>
-                          출석 {effectiveCount} / {record.requiredAttendance}
-                        </span>
                       </div>
                       {placesAttended.length > 0 && (
                         <div className="list-person-places">
@@ -206,15 +222,11 @@ const AttendanceList: React.FC = () => {
                                     <span className="list-person-place-date">{p.dateLabel}</span>
                                   )}
                                 </div>
-                                <span
-                                  className={
-                                    isQuarter
-                                      ? 'list-place-badge list-place-badge-quarter'
-                                      : 'list-place-badge list-place-badge-check'
-                                  }
-                                >
-                                  {isQuarter ? '25분기' : '✓'}
-                                </span>
+                                {isQuarter && (
+                                  <span className="list-place-badge list-place-badge-quarter">
+                                    25분기
+                                  </span>
+                                )}
                               </div>
                             );
                           })}
@@ -380,11 +392,40 @@ const AttendanceList: React.FC = () => {
           display: flex;
           align-items: center;
           justify-content: space-between;
-          margin-bottom: 0.25rem;
+          gap: 0.75rem;
+          margin-bottom: 0.5rem;
+          padding-bottom: 0.45rem;
+          border-bottom: 1px solid rgba(255,255,255,0.08);
         }
         .list-person-name {
           font-weight: 700;
           font-size: 1rem;
+        }
+        .list-person-header-right {
+          display: flex;
+          align-items: center;
+          justify-content: flex-end;
+          gap: 0.45rem;
+          flex-wrap: wrap;
+        }
+        .list-count-badge {
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+          padding: 0.2rem 0.55rem;
+          border-radius: 999px;
+          font-size: 0.8rem;
+          font-weight: 800;
+          line-height: 1.2;
+          white-space: nowrap;
+        }
+        .list-count-badge-ok {
+          background: rgba(34,197,94,0.14);
+          color: #4ADE80;
+        }
+        .list-count-badge-bad {
+          background: rgba(239,68,68,0.14);
+          color: #F87171;
         }
         .list-status-chip {
           padding: 0.15rem 0.5rem;
@@ -399,11 +440,6 @@ const AttendanceList: React.FC = () => {
         .list-status-chip-bad {
           background: rgba(239,68,68,0.12);
           color: #EF4444;
-        }
-        .list-person-meta {
-          font-size: 0.8rem;
-          color: ${COLORS.textSub};
-          margin-bottom: 0.4rem;
         }
         .list-person-places {
           display: flex;
