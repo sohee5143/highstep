@@ -8,7 +8,7 @@ import AdminGymManager from './AdminGymManager';
 import AdminCalendarEditor from './AdminCalendarEditor';
 import { fetchScheduleByDate, findOrCreateSessionForSchedule } from '../utils/workoutSchedule';
 
-type AdminTab = 'checkin' | 'gyms' | 'schedule';
+type AdminTab = 'checkin' | 'members' | 'gyms' | 'schedule';
 
 interface CheckedMember {
   name: string;
@@ -24,6 +24,7 @@ interface Member {
   name: string;
   type?: string | null;
   gender?: string | null;
+  status?: string | null;
 }
 
 const AttendanceAdmin: React.FC = () => {
@@ -36,6 +37,7 @@ const AttendanceAdmin: React.FC = () => {
   const [lastChecked, setLastChecked] = useState<CheckedMember | null>(null);
   const [currentTime, setCurrentTime] = useState(new Date());
   const [members, setMembers] = useState<Member[]>([]);
+  const [memberUpdateLoadingIds, setMemberUpdateLoadingIds] = useState<number[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isScheduleLoading, setIsScheduleLoading] = useState(true);
 
@@ -45,7 +47,7 @@ const AttendanceAdmin: React.FC = () => {
     const fetchMembers = async () => {
       const { data, error } = await supabase
         .from<Member>('members')
-        .select('id, name, type, gender')
+        .select('id, name, type, gender, status')
         .order('name', { ascending: true });
 
       if (error) {
@@ -171,6 +173,31 @@ const AttendanceAdmin: React.FC = () => {
     setTimeout(() => setLastChecked(null), 2000);
   };
 
+  const updateMemberStatus = async (memberId: number, nextStatus: string | null) => {
+    setMemberUpdateLoadingIds((prev) => [...prev, memberId]);
+
+    try {
+      const { error } = await supabase
+        .from('members')
+        .update({ status: nextStatus })
+        .eq('id', memberId)
+        .limit(1);
+
+      if (error) {
+        console.error('admin.members update 실패', error);
+        return;
+      }
+
+      setMembers((prev) =>
+        prev.map((member) =>
+          member.id === memberId ? { ...member, status: nextStatus } : member
+        )
+      );
+    } finally {
+      setMemberUpdateLoadingIds((prev) => prev.filter((id) => id !== memberId));
+    }
+  };
+
   const selectedSchedule = scheduleOptions.find((schedule) => schedule.id === selectedScheduleId) || null;
   const isFormValid = selectedNames.length > 0 && !!selectedSchedule;
   const formattedTime = currentTime.toLocaleTimeString('ko-KR', {
@@ -208,6 +235,7 @@ const AttendanceAdmin: React.FC = () => {
       <div style={{ display: 'flex', gap: 6, padding: '0.5rem 0.5rem 0', maxWidth: 480, width: '100%', margin: '0 auto', boxSizing: 'border-box' }}>
         {([
           { key: 'checkin', label: '출석 체크' },
+          { key: 'members', label: '부원 관리' },
           { key: 'gyms', label: '암장 관리' },
           { key: 'schedule', label: '스케줄 편집' },
         ] as { key: AdminTab; label: string }[]).map((tab) => (
@@ -239,6 +267,47 @@ const AttendanceAdmin: React.FC = () => {
         </div>
       )}
       {/* 탭별 콘텐츠 */}
+      {activeTab === 'members' && (
+        <main className="admin-main">
+          <div className="admin-card admin-form-card">
+            <span className="admin-list-title">부원 관리</span>
+            <span className="admin-label">부상 여부를 등록하거나 회복 처리할 수 있습니다.</span>
+            <div className="admin-member-management-list" aria-label="부원 상태 관리 목록">
+              {isLoading ? (
+                <div className="admin-loading" aria-label="데이터 로딩 중">
+                  <div className="admin-spinner" />
+                </div>
+              ) : (
+                members.map((member) => {
+                  const isInjured = member.status === '부상';
+                  const isUpdating = memberUpdateLoadingIds.includes(member.id);
+                  return (
+                    <div key={member.id} className="admin-member-management-item">
+                      <div>
+                        <div className="admin-member-management-name">{member.name}</div>
+                        <div className="admin-member-management-meta">
+                          {member.gender === '남' ? '남' : '여'} · {member.type === '기존' ? '기존부원' : '신입'}
+                          <span className={`admin-status-badge ${isInjured ? 'admin-status-bad' : 'admin-status-ok'}`}>
+                            {isInjured ? '부상' : '정상'}
+                          </span>
+                        </div>
+                      </div>
+                      <button
+                        type="button"
+                        className="admin-action-btn"
+                        onClick={() => updateMemberStatus(member.id, isInjured ? null : '부상')}
+                        disabled={isUpdating}
+                      >
+                        {isUpdating ? '저장 중...' : isInjured ? '정상 처리' : '부상 등록'}
+                      </button>
+                    </div>
+                  );
+                })
+              )}
+            </div>
+          </div>
+        </main>
+      )}
       {activeTab === 'gyms' && (
         <main className="admin-main"><AdminGymManager /></main>
       )}
@@ -273,6 +342,9 @@ const AttendanceAdmin: React.FC = () => {
                     <span className="admin-member-name">{member.name}</span>
                     <span className="admin-member-meta">
                       {member.gender === '남' ? '남' : '여'} · {member.type === '기존' ? '기존부원' : '신입'}
+                      {member.status === '부상' && (
+                        <span className="admin-member-badge">부상</span>
+                      )}
                     </span>
                   </label>
                 );
@@ -551,6 +623,76 @@ const AttendanceAdmin: React.FC = () => {
         .admin-member-meta {
           font-size: 0.8rem;
           color: ${COLORS.textSub};
+          display: flex;
+          align-items: center;
+          gap: 0.45rem;
+          flex-wrap: wrap;
+        }
+        .admin-member-badge {
+          display: inline-flex;
+          padding: 0.15rem 0.55rem;
+          border-radius: 999px;
+          font-size: 0.75rem;
+          font-weight: 700;
+          color: #111;
+          background: ${COLORS.danger};
+        }
+        .admin-member-management-list {
+          max-height: 420px;
+          overflow-y: auto;
+          display: flex;
+          flex-direction: column;
+          gap: 0.75rem;
+        }
+        .admin-member-management-item {
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          gap: 1rem;
+          padding: 1rem;
+          border-radius: 16px;
+          background: #111;
+        }
+        .admin-member-management-name {
+          font-size: 0.95rem;
+          font-weight: 600;
+          color: ${COLORS.textMain};
+        }
+        .admin-member-management-meta {
+          display: flex;
+          align-items: center;
+          gap: 0.5rem;
+          color: ${COLORS.textSub};
+          margin-top: 0.25rem;
+        }
+        .admin-status-badge {
+          border-radius: 999px;
+          padding: 0.15rem 0.65rem;
+          font-size: 0.78rem;
+          font-weight: 700;
+        }
+        .admin-status-ok {
+          color: #111;
+          background: #22c55e;
+        }
+        .admin-status-bad {
+          color: #111;
+          background: rgba(239,68,68,0.95);
+        }
+        .admin-action-btn {
+          padding: 0.65rem 0.9rem;
+          font-size: 0.87rem;
+          font-weight: 700;
+          border-radius: 12px;
+          border: none;
+          background: ${COLORS.primary};
+          color: #111;
+          cursor: pointer;
+          transition: transform 0.1s, opacity 0.2s;
+        }
+        .admin-action-btn:disabled {
+          opacity: 0.55;
+          cursor: not-allowed;
         }
         .admin-select {
           width: 100%;
