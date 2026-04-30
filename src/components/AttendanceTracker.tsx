@@ -168,7 +168,22 @@ const AttendanceTracker: React.FC = () => {
                                         </div>
                                         <div className="tracker-stat">
                                             <span className="tracker-stat-label">현재 출석</span>
-                                            <span className="tracker-stat-value tracker-success">{effectiveAttendanceCount}</span>
+                                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                                                <span style={{
+                                                    fontSize: '1.5rem',
+                                                    fontWeight: 'bold',
+                                                    color: (effectiveAttendanceCount >= record.requiredAttendance || effectiveAttendanceCount === record.requiredAttendance - 1) ? '#22c55e' : '#ef4444'
+                                                }}>
+                                                    {effectiveAttendanceCount}
+                                                </span>
+                                                <span style={{
+                                                    fontSize: '1.5rem',
+                                                    fontWeight: 'bold',
+                                                    color: (effectiveAttendanceCount >= record.requiredAttendance || effectiveAttendanceCount === record.requiredAttendance - 1) ? '#22c55e' : '#ef4444'
+                                                }}>
+                                                    {(effectiveAttendanceCount >= record.requiredAttendance || effectiveAttendanceCount === record.requiredAttendance - 1) ? '✓' : 'X'}
+                                                </span>
+                                            </div>
                                         </div>
                                     </div>
                                     <div className="tracker-progress-bar">

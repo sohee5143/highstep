@@ -12,6 +12,7 @@ interface DbMember {
 
 interface DbMemberSeasonProgress {
   member_id: number;
+  season: string;
   status: 'full' | 'minus_one' | 'X';
 }
 
@@ -88,8 +89,9 @@ export async function fetchAttendanceSummary(options?: { useCache?: boolean }): 
       sessionsPromise,
       supabase
         .from<DbMemberSeasonProgress>('member_season_progress')
-        .select('member_id, status')
-        .eq('season', CURRENT_SEASON),
+        .select('member_id, season, status')
+        .eq('season', CURRENT_SEASON)
+        .order('member_id'),
     ]);
 
     const { data: members, error: membersError } = membersRes;
@@ -109,11 +111,18 @@ export async function fetchAttendanceSummary(options?: { useCache?: boolean }): 
       console.error('[client] member_season_progress 조회 실패', seasonProgressError);
     }
 
+    // 디버깅: seasonProgress 데이터 확인
+    console.log('[client] seasonProgress 조회 결과:', seasonProgress);
+    console.log('[client] CURRENT_SEASON:', CURRENT_SEASON);
+
     // member_id -> status 맵핑
     const statusByMemberId: Record<number, 'full' | 'minus_one' | 'X'> = {};
     (seasonProgress || []).forEach((sp) => {
       statusByMemberId[sp.member_id] = sp.status;
     });
+    
+    // 디버깅: 매핑된 status 확인
+    console.log('[client] statusByMemberId:', statusByMemberId);
 
   const sessionMetaById: Record<number, SessionMeta> = {};
   (sessions || []).forEach((s) => {
@@ -156,13 +165,25 @@ export async function fetchAttendanceSummary(options?: { useCache?: boolean }): 
     const attendanceCount = baseAttendance + extraDb;
     const requiredAttendance = m.required_attendance || 0;
 
+    // DB에서 status를 못 가져오면 프론트에서 계산
+    let status: 'full' | 'minus_one' | 'X' = statusByMemberId[mid];
+    if (!status) {
+      if (attendanceCount >= requiredAttendance) {
+        status = 'full';
+      } else if (attendanceCount === requiredAttendance - 1) {
+        status = 'minus_one';
+      } else {
+        status = 'X';
+      }
+    }
+
     return {
       type: m.type || '',
       gender: m.gender || '',
       name: m.name,
       requiredAttendance,
       attendanceCount,
-      status: statusByMemberId[mid] || 'X',
+      status,
       records: perMemberPlace[mid] || {},
     };
   });

@@ -66,7 +66,7 @@ const AttendanceAdmin: React.FC = () => {
         const summary = await fetchAttendanceSummary();
         const statusMap: Record<string, 'O' | 'X'> = {};
         summary.forEach((record) => {
-          statusMap[record.name] = record.status === 'O' ? 'O' : 'X';
+          statusMap[record.name] = (record.status === 'full' || record.status === 'minus_one') ? 'O' : 'X';
         });
         setAttendanceRecords(statusMap);
       } catch (err) {
