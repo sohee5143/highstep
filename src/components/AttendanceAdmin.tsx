@@ -7,6 +7,7 @@ import { supabase } from '../utils/supabaseClient';
 import AdminGymManager from './AdminGymManager';
 import AdminCalendarEditor from './AdminCalendarEditor';
 import { fetchScheduleByDate, findOrCreateSessionForSchedule } from '../utils/workoutSchedule';
+import { fetchAttendanceSummary } from '../utils/attendanceSummary';
 
 type AdminTab = 'checkin' | 'members' | 'gyms' | 'schedule';
 
@@ -25,6 +26,7 @@ interface Member {
   type?: string | null;
   gender?: string | null;
   status?: string | null;
+  computedStatus?: 'O' | 'X';
 }
 
 const AttendanceAdmin: React.FC = () => {
@@ -40,6 +42,7 @@ const AttendanceAdmin: React.FC = () => {
   const [memberUpdateLoadingIds, setMemberUpdateLoadingIds] = useState<number[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isScheduleLoading, setIsScheduleLoading] = useState(true);
+  const [attendanceRecords, setAttendanceRecords] = useState<Record<string, 'O' | 'X'>>({});
 
   useEffect(() => {
     const timer = setInterval(() => setCurrentTime(new Date()), 1000);
@@ -47,7 +50,7 @@ const AttendanceAdmin: React.FC = () => {
     const fetchMembers = async () => {
       const { data, error } = await supabase
         .from<Member>('members')
-        .select('id, name, type, gender, status')
+        .select('id, name, type, gender, status, required_attendance, base_attendance_count')
         .order('name', { ascending: true });
 
       if (error) {
@@ -58,10 +61,23 @@ const AttendanceAdmin: React.FC = () => {
       setMembers(data || []);
     };
 
+    const fetchAttendanceData = async () => {
+      try {
+        const summary = await fetchAttendanceSummary();
+        const statusMap: Record<string, 'O' | 'X'> = {};
+        summary.forEach((record) => {
+          statusMap[record.name] = record.status === 'O' ? 'O' : 'X';
+        });
+        setAttendanceRecords(statusMap);
+      } catch (err) {
+        console.error('attendance summary load failed', err);
+      }
+    };
+
     const load = async () => {
       setIsLoading(true);
       try {
-        await fetchMembers();
+        await Promise.all([fetchMembers(), fetchAttendanceData()]);
       } finally {
         setIsLoading(false);
       }
@@ -173,6 +189,17 @@ const AttendanceAdmin: React.FC = () => {
     setTimeout(() => setLastChecked(null), 2000);
   };
 
+  const getDisplayStatus = (member: Member): { display: string; badge: 'ok' | 'bad' | 'warning' } => {
+    if (member.status === '부상') {
+      return { display: '부상', badge: 'warning' };
+    }
+    const computed = attendanceRecords[member.name] || 'X';
+    if (computed === 'O') {
+      return { display: '✓', badge: 'ok' };
+    }
+    return { display: '✕', badge: 'bad' };
+  };
+
   const updateMemberStatus = async (memberId: number, nextStatus: string | null) => {
     setMemberUpdateLoadingIds((prev) => [...prev, memberId]);
 
@@ -279,6 +306,7 @@ const AttendanceAdmin: React.FC = () => {
                 </div>
               ) : (
                 members.map((member) => {
+                  const displayStatus = getDisplayStatus(member);
                   const isInjured = member.status === '부상';
                   const isUpdating = memberUpdateLoadingIds.includes(member.id);
                   return (
@@ -287,8 +315,8 @@ const AttendanceAdmin: React.FC = () => {
                         <div className="admin-member-management-name">{member.name}</div>
                         <div className="admin-member-management-meta">
                           {member.gender === '남' ? '남' : '여'} · {member.type === '기존' ? '기존부원' : '신입'}
-                          <span className={`admin-status-badge ${isInjured ? 'admin-status-bad' : 'admin-status-ok'}`}>
-                            {isInjured ? '부상' : '정상'}
+                          <span className={`admin-status-badge admin-status-${displayStatus.badge}`}>
+                            {displayStatus.display}
                           </span>
                         </div>
                       </div>
@@ -298,7 +326,7 @@ const AttendanceAdmin: React.FC = () => {
                         onClick={() => updateMemberStatus(member.id, isInjured ? null : '부상')}
                         disabled={isUpdating}
                       >
-                        {isUpdating ? '저장 중...' : isInjured ? '정상 처리' : '부상 등록'}
+                        {isUpdating ? '저장 중...' : isInjured ? '회복 처리' : '부상 등록'}
                       </button>
                     </div>
                   );
@@ -678,6 +706,10 @@ const AttendanceAdmin: React.FC = () => {
         .admin-status-bad {
           color: #111;
           background: rgba(239,68,68,0.95);
+        }
+        .admin-status-warning {
+          color: #111;
+          background: #f59e0b;
         }
         .admin-action-btn {
           padding: 0.65rem 0.9rem;
