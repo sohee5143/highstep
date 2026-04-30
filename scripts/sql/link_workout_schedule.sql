@@ -1,4 +1,20 @@
--- 정기운동 일정(workout_schedule)과 출석 세션(sessions)을 정식 연동하기 위한 마이그레이션
+create table member_season_progress (
+  id bigint primary key generated always as identity,
+  member_id bigint not null,
+  season text not null,
+  attendance_count int default 0,
+  required_attendance int not null,
+  debt_carry_forward int default 0,
+  current_deficit int default 0,
+  status text default 'X',
+  created_at timestamp default now(),
+  updated_at timestamp default now(),
+  unique(member_id, season),
+  foreign key (member_id) references members(id) on delete cascade
+);
+
+create index idx_member_season_progress_member_id on member_season_progress(member_id);
+create index idx_member_season_progress_season on member_season_progress(season);-- 정기운동 일정(workout_schedule)과 출석 세션(sessions)을 정식 연동하기 위한 마이그레이션
 -- 실행 전 기존 데이터 백업을 권장합니다.
 
 begin;
@@ -42,5 +58,20 @@ join public.gyms g on g.id = ws.gym_id
 where s.workout_schedule_id is null
   and s.date = ws.date
   and s.place = g.name;
+
+commit;
+
+-- 출석 현황을 status 컬럼으로 구분 (full / minus_one / X)
+begin;
+
+UPDATE public.member_season_progress
+SET status = 
+  CASE
+    WHEN attendance_count >= required_attendance THEN 'full'
+    WHEN attendance_count = required_attendance - 1 THEN 'minus_one'
+    ELSE 'X'
+  END,
+  updated_at = now()
+WHERE season = '2026-1';
 
 commit;

@@ -1,5 +1,5 @@
 import { supabase } from './supabaseClient';
-import { AttendanceRecord } from '../types';
+import { AttendanceRecord, CURRENT_SEASON } from '../types';
 
 interface DbMember {
   id: number;
@@ -8,6 +8,11 @@ interface DbMember {
   gender: string | null;
   required_attendance: number | null;
   base_attendance_count: number | null;
+}
+
+interface DbMemberSeasonProgress {
+  member_id: number;
+  status: 'full' | 'minus_one' | 'X';
 }
 
 interface DbCheckin {
@@ -73,7 +78,7 @@ export async function fetchAttendanceSummary(options?: { useCache?: boolean }): 
       return legacyData || [];
     })();
 
-    const [membersRes, checkinsRes, sessions] = await Promise.all([
+    const [membersRes, checkinsRes, sessions, seasonProgressRes] = await Promise.all([
       supabase
         .from<DbMember>('members')
         .select('id, name, type, gender, required_attendance, base_attendance_count'),
@@ -81,6 +86,10 @@ export async function fetchAttendanceSummary(options?: { useCache?: boolean }): 
         .from<DbCheckin>('checkins')
         .select('member_id, session_id, kind'),
       sessionsPromise,
+      supabase
+        .from<DbMemberSeasonProgress>('member_season_progress')
+        .select('member_id, status')
+        .eq('season', CURRENT_SEASON),
     ]);
 
     const { data: members, error: membersError } = membersRes;
@@ -94,6 +103,17 @@ export async function fetchAttendanceSummary(options?: { useCache?: boolean }): 
       console.error('[client] checkins 조회 실패', checkinsError);
       return [];
     }
+
+    const { data: seasonProgress, error: seasonProgressError } = seasonProgressRes;
+    if (seasonProgressError) {
+      console.error('[client] member_season_progress 조회 실패', seasonProgressError);
+    }
+
+    // member_id -> status 맵핑
+    const statusByMemberId: Record<number, 'full' | 'minus_one' | 'X'> = {};
+    (seasonProgress || []).forEach((sp) => {
+      statusByMemberId[sp.member_id] = sp.status;
+    });
 
   const sessionMetaById: Record<number, SessionMeta> = {};
   (sessions || []).forEach((s) => {
@@ -142,7 +162,7 @@ export async function fetchAttendanceSummary(options?: { useCache?: boolean }): 
       name: m.name,
       requiredAttendance,
       attendanceCount,
-      status: attendanceCount >= requiredAttendance ? 'O' : 'X',
+      status: statusByMemberId[mid] || 'X',
       records: perMemberPlace[mid] || {},
     };
   });

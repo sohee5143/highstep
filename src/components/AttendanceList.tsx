@@ -20,7 +20,7 @@ const AttendanceList: React.FC = () => {
   });
 
   const getStatusDisplay = React.useCallback((record: AttendanceRecord, effectiveCount: number) => {
-    const isComplete = effectiveCount >= record.requiredAttendance;
+    const isComplete = record.status === 'full' || record.status === 'minus_one';
     return {
       isComplete,
       label: isComplete ? '✓' : 'X',
