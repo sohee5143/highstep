@@ -7,7 +7,7 @@ import { supabase } from '../utils/supabaseClient';
 import AdminGymManager from './AdminGymManager';
 import AdminCalendarEditor from './AdminCalendarEditor';
 import { fetchScheduleByDate, findOrCreateSessionForSchedule } from '../utils/workoutSchedule';
-import { fetchAttendanceSummary } from '../utils/attendanceSummary';
+import { fetchAttendanceSummary, clearAttendanceSummaryCache } from '../utils/attendanceSummary';
 
 type AdminTab = 'checkin' | 'members' | 'gyms' | 'schedule';
 
@@ -190,6 +190,7 @@ const AttendanceAdmin: React.FC = () => {
   };
 
   const getDisplayStatus = (member: Member): { display: string; badge: 'ok' | 'bad' | 'warning' } => {
+    // 부상 상태를 절대 우선순위로 설정
     if (member.status === '부상') {
       return { display: '부상', badge: 'warning' };
     }
@@ -200,26 +201,48 @@ const AttendanceAdmin: React.FC = () => {
     return { display: '✕', badge: 'bad' };
   };
 
-  const updateMemberStatus = async (memberId: number, nextStatus: string | null) => {
+  const updateMemberStatus = async (memberId: number, nextStatus: string) => {
     setMemberUpdateLoadingIds((prev) => [...prev, memberId]);
 
     try {
+      console.log('[admin] updateMemberStatus 시작:', { memberId, nextStatus });
+      
       const { error } = await supabase
         .from('members')
         .update({ status: nextStatus })
-        .eq('id', memberId)
-        .limit(1);
+        .eq('id', memberId);
+
+      console.log('[admin] updateMemberStatus 응답:', { error });
 
       if (error) {
-        console.error('admin.members update 실패', error);
+        console.error('[admin] members update 실패:', JSON.stringify(error, null, 2));
+        alert(`부상 상태 업데이트에 실패했습니다.\n오류: ${error.message}`);
         return;
       }
 
-      setMembers((prev) =>
-        prev.map((member) =>
-          member.id === memberId ? { ...member, status: nextStatus } : member
-        )
-      );
+      console.log('[admin] DB 업데이트 성공');
+
+      // UI 즉시 업데이트
+      const updatedMember = members.find((m) => m.id === memberId);
+      if (updatedMember) {
+        updatedMember.status = nextStatus;
+        setMembers([...members]);
+        console.log('[admin] UI 업데이트 완료:', updatedMember.name, nextStatus);
+      }
+
+      // 부상 상태로 변경했다면 attendanceRecords도 업데이트
+      if (nextStatus === '부상' && updatedMember) {
+        setAttendanceRecords((prev) => ({
+          ...prev,
+          [updatedMember.name]: 'X',
+        }));
+      }
+      
+      // 캐시 비우기: status 변경 후 다른 페이지에서 최신 데이터를 받도록
+      clearAttendanceSummaryCache();
+    } catch (err) {
+      console.error('[admin] updateMemberStatus 예외 발생:', err);
+      alert('예상치 못한 오류가 발생했습니다.');
     } finally {
       setMemberUpdateLoadingIds((prev) => prev.filter((id) => id !== memberId));
     }
@@ -323,7 +346,7 @@ const AttendanceAdmin: React.FC = () => {
                       <button
                         type="button"
                         className="admin-action-btn"
-                        onClick={() => updateMemberStatus(member.id, isInjured ? null : '부상')}
+                        onClick={() => updateMemberStatus(member.id, isInjured ? 'X' : '부상')}
                         disabled={isUpdating}
                       >
                         {isUpdating ? '저장 중...' : isInjured ? '회복 처리' : '부상 등록'}

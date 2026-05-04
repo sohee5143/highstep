@@ -168,22 +168,32 @@ const AttendanceTracker: React.FC = () => {
                                         </div>
                                         <div className="tracker-stat">
                                             <span className="tracker-stat-label">현재 출석</span>
-                                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                                            {record.status === '부상' ? (
                                                 <span style={{
-                                                    fontSize: '1.5rem',
+                                                    fontSize: '1.25rem',
                                                     fontWeight: 'bold',
-                                                    color: (effectiveAttendanceCount >= record.requiredAttendance || effectiveAttendanceCount === record.requiredAttendance - 1) ? '#22c55e' : '#ef4444'
+                                                    color: '#F59E0B'
                                                 }}>
-                                                    {effectiveAttendanceCount}
+                                                    부상
                                                 </span>
-                                                <span style={{
-                                                    fontSize: '1.5rem',
-                                                    fontWeight: 'bold',
-                                                    color: (effectiveAttendanceCount >= record.requiredAttendance || effectiveAttendanceCount === record.requiredAttendance - 1) ? '#22c55e' : '#ef4444'
-                                                }}>
-                                                    {(effectiveAttendanceCount >= record.requiredAttendance || effectiveAttendanceCount === record.requiredAttendance - 1) ? '✓' : 'X'}
-                                                </span>
-                                            </div>
+                                            ) : (
+                                                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                                                    <span style={{
+                                                        fontSize: '1.5rem',
+                                                        fontWeight: 'bold',
+                                                        color: (effectiveAttendanceCount >= record.requiredAttendance || effectiveAttendanceCount === record.requiredAttendance - 1) ? '#22c55e' : '#ef4444'
+                                                    }}>
+                                                        {effectiveAttendanceCount}
+                                                    </span>
+                                                    <span style={{
+                                                        fontSize: '1.5rem',
+                                                        fontWeight: 'bold',
+                                                        color: (effectiveAttendanceCount >= record.requiredAttendance || effectiveAttendanceCount === record.requiredAttendance - 1) ? '#22c55e' : '#ef4444'
+                                                    }}>
+                                                        {(effectiveAttendanceCount >= record.requiredAttendance || effectiveAttendanceCount === record.requiredAttendance - 1) ? '✓' : 'X'}
+                                                    </span>
+                                                </div>
+                                            )}
                                         </div>
                                     </div>
                                     <div className="tracker-progress-bar">

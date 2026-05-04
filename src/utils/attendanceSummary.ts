@@ -8,12 +8,13 @@ interface DbMember {
   gender: string | null;
   required_attendance: number | null;
   base_attendance_count: number | null;
+  status: string | null;
 }
 
 interface DbMemberSeasonProgress {
   member_id: number;
   season: string;
-  status: 'full' | 'minus_one' | 'X';
+  status: 'full' | 'minus_one' | 'X' | '부상';
 }
 
 interface DbCheckin {
@@ -82,7 +83,7 @@ export async function fetchAttendanceSummary(options?: { useCache?: boolean }): 
     const [membersRes, checkinsRes, sessions, seasonProgressRes] = await Promise.all([
       supabase
         .from<DbMember>('members')
-        .select('id, name, type, gender, required_attendance, base_attendance_count'),
+        .select('id, name, type, gender, required_attendance, base_attendance_count, status'),
       supabase
         .from<DbCheckin>('checkins')
         .select('member_id, session_id, kind'),
@@ -116,7 +117,7 @@ export async function fetchAttendanceSummary(options?: { useCache?: boolean }): 
     console.log('[client] CURRENT_SEASON:', CURRENT_SEASON);
 
     // member_id -> status 맵핑
-    const statusByMemberId: Record<number, 'full' | 'minus_one' | 'X'> = {};
+    const statusByMemberId: Record<number, 'full' | 'minus_one' | 'X' | '부상'> = {};
     (seasonProgress || []).forEach((sp) => {
       statusByMemberId[sp.member_id] = sp.status;
     });
@@ -165,9 +166,17 @@ export async function fetchAttendanceSummary(options?: { useCache?: boolean }): 
     const attendanceCount = baseAttendance + extraDb;
     const requiredAttendance = m.required_attendance || 0;
 
-    // DB에서 status를 못 가져오면 프론트에서 계산
-    let status: 'full' | 'minus_one' | 'X' = statusByMemberId[mid];
-    if (!status) {
+    // status 결정 우선순위:
+    // 1. members.status가 '부상'이면 → '부상'
+    // 2. member_season_progress에서 상태를 찾으면 → 사용
+    // 3. 없으면 프론트에서 계산
+    let status: 'full' | 'minus_one' | 'X' | '부상';
+    
+    if (m.status === '부상') {
+      status = '부상';
+    } else if (statusByMemberId[mid]) {
+      status = statusByMemberId[mid];
+    } else {
       if (attendanceCount >= requiredAttendance) {
         status = 'full';
       } else if (attendanceCount === requiredAttendance - 1) {

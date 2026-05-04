@@ -4,7 +4,7 @@ export interface AttendanceRecord {
     name: string;
     requiredAttendance: number;
     attendanceCount: number;
-    status: 'full' | 'minus_one' | 'X'; // DB에서 읽는 상태값
+    status: 'full' | 'minus_one' | 'X' | '부상'; // DB에서 읽는 상태값
     records: {
     [scheduleKey: string]: number | null | string;
     };

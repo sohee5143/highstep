@@ -20,10 +20,18 @@ const AttendanceList: React.FC = () => {
   });
 
   const getStatusDisplay = React.useCallback((record: AttendanceRecord, effectiveCount: number) => {
+    if (record.status === '부상') {
+      return {
+        isInjured: true,
+        label: '부상',
+        isComplete: false,
+      };
+    }
     const isComplete = effectiveCount >= record.requiredAttendance || effectiveCount === record.requiredAttendance - 1;
     return {
-      isComplete,
+      isInjured: false,
       label: isComplete ? '✓' : 'X',
+      isComplete,
     };
   }, []);
 
@@ -147,7 +155,7 @@ const AttendanceList: React.FC = () => {
                           <td className="list-name-cell">{record.name}</td>
                           <td>{effectiveCount}</td>
                           <td>{record.requiredAttendance}</td>
-                          <td className={statusDisplay.isComplete ? 'list-status-ok' : 'list-status-bad'}>
+                          <td className={statusDisplay.isInjured ? 'list-status-injured' : (statusDisplay.isComplete ? 'list-status-ok' : 'list-status-bad')}>
                             {statusDisplay.label}
                           </td>
                           {places.map((p) => {
@@ -190,18 +198,22 @@ const AttendanceList: React.FC = () => {
                         <div className="list-person-header-right">
                           <span
                             className={
-                              statusDisplay.isComplete
-                                ? 'list-count-badge list-count-badge-ok'
-                                : 'list-count-badge list-count-badge-bad'
+                              statusDisplay.isInjured
+                                ? 'list-count-badge list-count-badge-injured'
+                                : (statusDisplay.isComplete
+                                  ? 'list-count-badge list-count-badge-ok'
+                                  : 'list-count-badge list-count-badge-bad')
                             }
                           >
                             출석 {effectiveCount} / {record.requiredAttendance}
                           </span>
                           <div
                             className={
-                              statusDisplay.isComplete
-                                ? 'list-status-chip list-status-chip-ok'
-                                : 'list-status-chip list-status-chip-bad'
+                              statusDisplay.isInjured
+                                ? 'list-status-chip list-status-chip-injured'
+                                : (statusDisplay.isComplete
+                                  ? 'list-status-chip list-status-chip-ok'
+                                  : 'list-status-chip list-status-chip-bad')
                             }
                           >
                             {statusDisplay.label}
@@ -368,6 +380,10 @@ const AttendanceList: React.FC = () => {
           color: #EF4444;
           font-weight: 600;
         }
+        .list-status-injured {
+          color: #F59E0B;
+          font-weight: 600;
+        }
         .list-date-header {
           display: block;
           font-size: 0.72rem;
@@ -427,6 +443,10 @@ const AttendanceList: React.FC = () => {
           background: rgba(239,68,68,0.14);
           color: #F87171;
         }
+        .list-count-badge-injured {
+          background: rgba(245,158,11,0.14);
+          color: #FBBF24;
+        }
         .list-status-chip {
           padding: 0.15rem 0.5rem;
           border-radius: 999px;
@@ -440,6 +460,10 @@ const AttendanceList: React.FC = () => {
         .list-status-chip-bad {
           background: rgba(239,68,68,0.12);
           color: #EF4444;
+        }
+        .list-status-chip-injured {
+          background: rgba(245,158,11,0.12);
+          color: #F59E0B;
         }
         .list-person-places {
           display: flex;
