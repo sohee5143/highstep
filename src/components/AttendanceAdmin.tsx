@@ -270,6 +270,23 @@ const AttendanceAdmin: React.FC = () => {
     try {
       console.log('[admin] deleteMember 시작:', { memberId, memberName });
       
+      // 1단계: 해당 부원의 모든 출석 기록(checkins) 먼저 삭제
+      console.log('[admin] 부원의 출석 기록 삭제 중...');
+      const { error: checkinsDeleteError } = await supabase
+        .from('checkins')
+        .delete()
+        .eq('member_id', memberId);
+
+      if (checkinsDeleteError) {
+        console.error('[admin] checkins delete 실패:', JSON.stringify(checkinsDeleteError, null, 2));
+        alert(`출석 기록 삭제에 실패했습니다.\n오류: ${checkinsDeleteError.message}`);
+        return;
+      }
+
+      console.log('[admin] 출석 기록 삭제 성공');
+
+      // 2단계: 부원 삭제
+      console.log('[admin] 부원 정보 삭제 중...');
       const response = await supabase
         .from('members')
         .delete()
@@ -284,7 +301,7 @@ const AttendanceAdmin: React.FC = () => {
         return;
       }
 
-      console.log('[admin] DB 삭제 성공');
+      console.log('[admin] 부원 정보 삭제 성공');
 
       // UI 업데이트: 해당 부원을 제거
       setMembers((prev) => prev.filter((m) => m.id !== memberId));
