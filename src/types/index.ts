@@ -8,7 +8,23 @@ export interface AttendanceRecord {
     records: {
     [scheduleKey: string]: number | null | string;
     };
+    // 분기 정보 (새로 추가)
+    quarter?: number;      // 1-4
+    year?: number;         // 연도
+    quarterKey?: string;   // "2026_Q1" 형태
+    previousQuarterData?: {
+      attendanceCount: number;
+      status: 'full' | 'minus_one' | 'X' | '부상';
+    };
 }
+
+// 분기별 출석 현황 (새로 추가)
+export interface QuarterAttendanceRecord extends AttendanceRecord {
+  quarter: number;
+  year: number;
+  quarterKey: string;
+}
+
 // 현재 시즌 식별자 (sessions.season 컬럼과 매칭)
 export const CURRENT_SEASON = '2026-1';
 
