@@ -40,6 +40,7 @@ const AttendanceAdmin: React.FC = () => {
   const [currentTime, setCurrentTime] = useState(new Date());
   const [members, setMembers] = useState<Member[]>([]);
   const [memberUpdateLoadingIds, setMemberUpdateLoadingIds] = useState<number[]>([]);
+  const [memberDeleteLoadingIds, setMemberDeleteLoadingIds] = useState<number[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isScheduleLoading, setIsScheduleLoading] = useState(true);
   const [attendanceRecords, setAttendanceRecords] = useState<Record<string, 'O' | 'X'>>({});
@@ -207,20 +208,32 @@ const AttendanceAdmin: React.FC = () => {
     try {
       console.log('[admin] updateMemberStatus 시작:', { memberId, nextStatus });
       
-      const { error } = await supabase
+      const response = await supabase
         .from('members')
         .update({ status: nextStatus })
         .eq('id', memberId);
 
-      console.log('[admin] updateMemberStatus 응답:', { error });
+      console.log('[admin] 전체 응답:', JSON.stringify(response, null, 2));
+      console.log('[admin] response.data:', response.data);
+      console.log('[admin] response.error:', response.error);
+      console.log('[admin] response.status:', response.status);
+      console.log('[admin] response.statusText:', response.statusText);
+      console.log('[admin] affected rows:', response.data?.length || 0);
 
-      if (error) {
-        console.error('[admin] members update 실패:', JSON.stringify(error, null, 2));
-        alert(`부상 상태 업데이트에 실패했습니다.\n오류: ${error.message}`);
+      if (response.error) {
+        console.error('[admin] members update 실패:', JSON.stringify(response.error, null, 2));
+        alert(`부상 상태 업데이트에 실패했습니다.\n오류: ${response.error.message}`);
         return;
       }
 
-      console.log('[admin] DB 업데이트 성공');
+      // RLS 정책 때문에 error는 null이지만 실제로 업데이트되지 않을 수 있음
+      if (!response.data || response.data.length === 0) {
+        console.warn('[admin] UPDATE 쿼리는 성공했지만 영향받은 행이 없음 (RLS 정책 확인 필요)');
+        alert('부상 상태 업데이트: 데이터베이스 권한 오류입니다. 관리자에게 문의하세요.');
+        return;
+      }
+
+      console.log('[admin] DB 업데이트 성공, affected rows:', response.data.length);
 
       // UI 즉시 업데이트
       const updatedMember = members.find((m) => m.id === memberId);
@@ -238,13 +251,60 @@ const AttendanceAdmin: React.FC = () => {
         }));
       }
       
-      // 캐시 비우기: status 변경 후 다른 페이지에서 최신 데이터를 받도록
+      // 캐시 비우기
       clearAttendanceSummaryCache();
     } catch (err) {
       console.error('[admin] updateMemberStatus 예외 발생:', err);
       alert('예상치 못한 오류가 발생했습니다.');
     } finally {
       setMemberUpdateLoadingIds((prev) => prev.filter((id) => id !== memberId));
+    }
+  };
+
+  const deleteMember = async (memberId: number, memberName: string) => {
+    const confirmed = window.confirm(`정말로 ${memberName} 부원을 삭제하시겠습니까?\n이 작업은 취소할 수 없습니다.`);
+    if (!confirmed) return;
+
+    setMemberDeleteLoadingIds((prev) => [...prev, memberId]);
+
+    try {
+      console.log('[admin] deleteMember 시작:', { memberId, memberName });
+      
+      const response = await supabase
+        .from('members')
+        .delete()
+        .eq('id', memberId);
+
+      console.log('[admin] delete 응답:', JSON.stringify(response, null, 2));
+      console.log('[admin] response.error:', response.error);
+
+      if (response.error) {
+        console.error('[admin] members delete 실패:', JSON.stringify(response.error, null, 2));
+        alert(`부원 삭제에 실패했습니다.\n오류: ${response.error.message}`);
+        return;
+      }
+
+      console.log('[admin] DB 삭제 성공');
+
+      // UI 업데이트: 해당 부원을 제거
+      setMembers((prev) => prev.filter((m) => m.id !== memberId));
+      
+      // attendanceRecords에서도 제거
+      setAttendanceRecords((prev) => {
+        const newRecords = { ...prev };
+        delete newRecords[memberName];
+        return newRecords;
+      });
+
+      // 캐시 비우기
+      clearAttendanceSummaryCache();
+
+      console.log('[admin] UI 업데이트 완료:', memberName, '삭제됨');
+    } catch (err) {
+      console.error('[admin] deleteMember 예외 발생:', err);
+      alert('예상치 못한 오류가 발생했습니다.');
+    } finally {
+      setMemberDeleteLoadingIds((prev) => prev.filter((id) => id !== memberId));
     }
   };
 
@@ -343,14 +403,24 @@ const AttendanceAdmin: React.FC = () => {
                           </span>
                         </div>
                       </div>
-                      <button
-                        type="button"
-                        className="admin-action-btn"
-                        onClick={() => updateMemberStatus(member.id, isInjured ? 'X' : '부상')}
-                        disabled={isUpdating}
-                      >
-                        {isUpdating ? '저장 중...' : isInjured ? '회복 처리' : '부상 등록'}
-                      </button>
+                      <div className="admin-action-buttons">
+                        <button
+                          type="button"
+                          className="admin-action-btn"
+                          onClick={() => updateMemberStatus(member.id, isInjured ? 'X' : '부상')}
+                          disabled={isUpdating}
+                        >
+                          {isUpdating ? '저장 중...' : isInjured ? '회복 처리' : '부상 등록'}
+                        </button>
+                        <button
+                          type="button"
+                          className="admin-action-btn admin-action-btn-delete"
+                          onClick={() => deleteMember(member.id, member.name)}
+                          disabled={memberDeleteLoadingIds.includes(member.id)}
+                        >
+                          {memberDeleteLoadingIds.includes(member.id) ? '삭제 중...' : '삭제'}
+                        </button>
+                      </div>
                     </div>
                   );
                 })
@@ -704,6 +774,11 @@ const AttendanceAdmin: React.FC = () => {
           border-radius: 16px;
           background: #111;
         }
+        .admin-action-buttons {
+          display: flex;
+          gap: 0.5rem;
+          flex-shrink: 0;
+        }
         .admin-member-management-name {
           font-size: 0.95rem;
           font-weight: 600;
@@ -748,6 +823,10 @@ const AttendanceAdmin: React.FC = () => {
         .admin-action-btn:disabled {
           opacity: 0.55;
           cursor: not-allowed;
+        }
+        .admin-action-btn-delete {
+          background: ${COLORS.danger};
+          color: #fff;
         }
         .admin-select {
           width: 100%;
