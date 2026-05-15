@@ -2,17 +2,22 @@ import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { AttendanceRecord, PlaceInfo } from '../types';
 import { loadAllChecks } from '../utils/localAttendance';
-import { fetchAttendanceSummary } from '../utils/attendanceSummary';
+import { fetchAttendanceSummary, fetchAttendanceSummaryByQuarter } from '../utils/attendanceSummary';
 import { fetchPlacesForCurrentSeason } from '../utils/places';
+import { getCurrentQuarter, getRecentQuarters } from '../utils/quarters';
 import { COLORS } from '../constants/colors';
 
 const AttendanceList: React.FC = () => {
   const checks = loadAllChecks();
+  const currentQuarter = getCurrentQuarter();
 
   const [records, setRecords] = useState<AttendanceRecord[]>([]);
   const [dbMemberNames, setDbMemberNames] = useState<string[]>([]);
   const [places, setPlaces] = useState<PlaceInfo[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [selectedYear, setSelectedYear] = useState(currentQuarter.year);
+  const [selectedQuarter, setSelectedQuarter] = useState(currentQuarter.quarter);
+  const [quarterOptions, setQuarterOptions] = useState<Array<{ year: number; quarter: number; label: string }>>([]);
 
   const extraByName: Record<string, number> = {};
   checks.forEach((c) => {
@@ -37,11 +42,31 @@ const AttendanceList: React.FC = () => {
 
   useEffect(() => {
     let cancelled = false;
+    
+    // 분기 옵션 생성
+    const recentQuarters = getRecentQuarters(8); // 최근 8개 분기
+    const options = recentQuarters.map((q) => ({
+      year: q.year,
+      quarter: q.quarter,
+      label: `${q.year}년 ${
+        q.quarter === 1 ? '1분기(1-3월)' :
+        q.quarter === 2 ? '2분기(4-6월)' :
+        q.quarter === 3 ? '3분기(7-9월)' :
+        '4분기(10-12월)'
+      }`,
+    }));
+    
+    if (cancelled) return;
+    setQuarterOptions(options);
+  }, []);
+
+  useEffect(() => {
+    let cancelled = false;
     const fetchSummary = async () => {
       setIsLoading(true);
       try {
         const [data, placeInfos] = await Promise.all([
-          fetchAttendanceSummary(),
+          fetchAttendanceSummaryByQuarter(selectedYear, selectedQuarter),
           fetchPlacesForCurrentSeason(),
         ]);
         if (cancelled) return;
@@ -57,7 +82,7 @@ const AttendanceList: React.FC = () => {
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [selectedYear, selectedQuarter]);
 
   const getMonthLabel = React.useCallback((p: PlaceInfo): string => {
     if (!p.dateLabel) return '기타';
@@ -104,7 +129,26 @@ const AttendanceList: React.FC = () => {
             aria-label="동아리 로고"
           />
         </Link>
-        <h2 className="list-title">2026년 상반기(2월, 3월, 4월) 출석현황</h2>
+        <div className="list-quarter-selector">
+          <label htmlFor="quarter-select" className="list-quarter-label">분기 선택:</label>
+          <select
+            id="quarter-select"
+            className="list-quarter-select"
+            value={`${selectedYear}-${selectedQuarter}`}
+            onChange={(e) => {
+              const [year, quarter] = e.target.value.split('-');
+              setSelectedYear(parseInt(year, 10));
+              setSelectedQuarter(parseInt(quarter, 10));
+            }}
+          >
+            {quarterOptions.map((opt) => (
+              <option key={`${opt.year}-${opt.quarter}`} value={`${opt.year}-${opt.quarter}`}>
+                {opt.label}
+              </option>
+            ))}
+          </select>
+        </div>
+        <h2 className="list-title">{selectedYear}년 {selectedQuarter}분기 출석현황</h2>
         <p className="list-desc">정기운동 출석을 한눈에 확인하세요</p>
       </header>
       <main className="list-main">
@@ -277,6 +321,37 @@ const AttendanceList: React.FC = () => {
           align-items: center;
           gap: 0.3rem;
           text-align: center;
+        }
+        .list-quarter-selector {
+          display: flex;
+          align-items: center;
+          gap: 0.8rem;
+          margin: 1rem 0;
+          justify-content: center;
+        }
+        .list-quarter-label {
+          font-size: 0.95rem;
+          font-weight: 500;
+          color: ${COLORS.textMain};
+        }
+        .list-quarter-select {
+          padding: 0.6rem 1rem;
+          border: 2px solid ${COLORS.primary};
+          border-radius: 6px;
+          background: white;
+          color: ${COLORS.textMain};
+          font-size: 0.95rem;
+          font-weight: 500;
+          cursor: pointer;
+          transition: all 0.2s ease;
+        }
+        .list-quarter-select:hover {
+          background: ${COLORS.primaryLight};
+        }
+        .list-quarter-select:focus {
+          outline: none;
+          border-color: ${COLORS.primaryDark};
+          box-shadow: 0 0 0 3px ${COLORS.primaryLight}33;
         }
         .list-logo {
           width: 96px;
