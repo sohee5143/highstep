@@ -1,5 +1,6 @@
 import { supabase } from './supabaseClient';
 import { AttendanceRecord, CURRENT_SEASON } from '../types';
+import { getCurrentQuarter, getQuarterInfo } from './quarters';
 
 interface DbMember {
   id: number;
@@ -14,7 +15,10 @@ interface DbMember {
 interface DbMemberSeasonProgress {
   member_id: number;
   season: string;
+  year: number;
+  quarter: number;
   status: 'full' | 'minus_one' | 'X' | '부상';
+  attendance_count: number;
 }
 
 interface DbCheckin {
@@ -28,6 +32,8 @@ interface DbSession {
   place: string | null;
   date?: string | null;
   season?: string | null;
+  year?: number;
+  quarter?: number;
   workout_schedule_id?: number | null;
   workout_schedule?: {
     id: number;
@@ -53,80 +59,83 @@ export function clearAttendanceSummaryCache(): void {
   cachedPromise = null;
 }
 
-export async function fetchAttendanceSummary(options?: { useCache?: boolean }): Promise<AttendanceRecord[]> {
-  const useCache = options?.useCache !== false;
-  if (useCache) {
-    if (cachedValue) return cachedValue;
-    if (cachedPromise) return cachedPromise;
+/**
+ * 특정 분기의 출석 현황 조회
+ * @param year 연도 (e.g., 2026)
+ * @param quarter 분기 (1-4)
+ */
+export async function fetchAttendanceSummaryByQuarter(
+  year: number,
+  quarter: number
+): Promise<AttendanceRecord[]> {
+  // season 형식으로 변환 (예: "2026-1")
+  const season = `${year}-${quarter}`;
+  
+  const sessionsPromise = (async (): Promise<DbSession[]> => {
+    const { data, error } = await supabase
+      .from<DbSession>('sessions')
+      .select('id, place, date, season, year, quarter, workout_schedule_id, workout_schedule:workout_schedule_id(id, date, gyms(id, name, icon_url))');
+
+    if (!error && data) return data;
+
+    const { data: legacyData, error: legacyError } = await supabase
+      .from<DbSession>('sessions')
+      .select('id, place, date, season, year, quarter');
+
+    if (legacyError) {
+      console.error('[client] sessions 조회 실패', legacyError);
+      return [];
+    }
+
+    return legacyData || [];
+  })();
+
+  const [membersRes, checkinsRes, sessions, seasonProgressRes] = await Promise.all([
+    supabase
+      .from<DbMember>('members')
+      .select('id, name, type, gender, required_attendance, base_attendance_count, status'),
+    supabase
+      .from<DbCheckin>('checkins')
+      .select('member_id, session_id, kind'),
+    sessionsPromise,
+    supabase
+      .from<DbMemberSeasonProgress>('member_season_progress')
+      .select('member_id, season, year, quarter, status, attendance_count')
+      .eq('year', year)
+      .eq('quarter', quarter)
+      .order('member_id'),
+  ]);
+
+  const { data: members, error: membersError } = membersRes;
+  if (membersError) {
+    console.error('[client] members 조회 실패', membersError);
+    return [];
   }
 
-  const run = async (): Promise<AttendanceRecord[]> => {
-    const sessionsPromise = (async (): Promise<DbSession[]> => {
-      const { data, error } = await supabase
-        .from<DbSession>('sessions')
-        .select('id, place, date, season, workout_schedule_id, workout_schedule:workout_schedule_id(id, date, gyms(id, name, icon_url))');
+  const { data: checkins, error: checkinsError } = checkinsRes;
+  if (checkinsError) {
+    console.error('[client] checkins 조회 실패', checkinsError);
+  }
 
-      if (!error && data) return data;
+  const { data: seasonProgress, error: seasonProgressError } = seasonProgressRes;
+  if (seasonProgressError) {
+    console.error('[client] member_season_progress 조회 실패', seasonProgressError);
+  }
 
-      const { data: legacyData, error: legacyError } = await supabase
-        .from<DbSession>('sessions')
-        .select('id, place, date, season');
+  console.log(`[client] 분기 ${year}-Q${quarter} 출석 데이터 조회`);
+  console.log('[client] seasonProgress:', seasonProgress);
 
-      if (legacyError) {
-        console.error('[client] sessions 조회 실패', legacyError);
-        return [];
-      }
-
-      return legacyData || [];
-    })();
-
-    const [membersRes, checkinsRes, sessions, seasonProgressRes] = await Promise.all([
-      supabase
-        .from<DbMember>('members')
-        .select('id, name, type, gender, required_attendance, base_attendance_count, status'),
-      supabase
-        .from<DbCheckin>('checkins')
-        .select('member_id, session_id, kind'),
-      sessionsPromise,
-      supabase
-        .from<DbMemberSeasonProgress>('member_season_progress')
-        .select('member_id, season, status')
-        .eq('season', CURRENT_SEASON)
-        .order('member_id'),
-    ]);
-
-    const { data: members, error: membersError } = membersRes;
-    if (membersError) {
-      console.error('[client] members 조회 실패', membersError);
-      return [];
-    }
-
-    const { data: checkins, error: checkinsError } = checkinsRes;
-    if (checkinsError) {
-      console.error('[client] checkins 조회 실패', checkinsError);
-      return [];
-    }
-
-    const { data: seasonProgress, error: seasonProgressError } = seasonProgressRes;
-    if (seasonProgressError) {
-      console.error('[client] member_season_progress 조회 실패', seasonProgressError);
-    }
-
-    // 디버깅: seasonProgress 데이터 확인
-    console.log('[client] seasonProgress 조회 결과:', seasonProgress);
-    console.log('[client] CURRENT_SEASON:', CURRENT_SEASON);
-
-    // member_id -> status 맵핑
-    const statusByMemberId: Record<number, 'full' | 'minus_one' | 'X' | '부상'> = {};
-    (seasonProgress || []).forEach((sp) => {
-      statusByMemberId[sp.member_id] = sp.status;
-    });
-    
-    // 디버깅: 매핑된 status 확인
-    console.log('[client] statusByMemberId:', statusByMemberId);
+  // member_id -> status 맵핑
+  const statusByMemberId: Record<number, 'full' | 'minus_one' | 'X' | '부상'> = {};
+  (seasonProgress || []).forEach((sp) => {
+    statusByMemberId[sp.member_id] = sp.status;
+  });
 
   const sessionMetaById: Record<number, SessionMeta> = {};
   (sessions || []).forEach((s) => {
+    // 해당 분기의 세션만 필터링
+    if (s.year !== year || s.quarter !== quarter) return;
+
     const scheduleId = s.workout_schedule?.id || s.workout_schedule_id;
     const gymName = s.workout_schedule?.gyms?.name || s.place;
 
@@ -171,7 +180,7 @@ export async function fetchAttendanceSummary(options?: { useCache?: boolean }): 
     // 2. member_season_progress에서 상태를 찾으면 → 사용
     // 3. 없으면 프론트에서 계산
     let status: 'full' | 'minus_one' | 'X' | '부상';
-    
+
     if (m.status === '부상') {
       status = '부상';
     } else if (statusByMemberId[mid]) {
@@ -194,22 +203,22 @@ export async function fetchAttendanceSummary(options?: { useCache?: boolean }): 
       attendanceCount,
       status,
       records: perMemberPlace[mid] || {},
+      quarter,
+      year,
+      quarterKey: `${year}_Q${quarter}`,
     };
   });
 
   records.sort((a, b) => a.name.localeCompare(b.name, 'ko-KR'));
 
   return records;
-  };
+}
 
-  const p = run();
-  if (useCache) cachedPromise = p;
-
-  try {
-    const result = await p;
-    if (useCache && result.length > 0) cachedValue = result;
-    return result;
-  } finally {
-    if (useCache) cachedPromise = null;
-  }
+/**
+ * 현재 분기 데이터 조회 (기존 함수와 호환)
+ */
+export async function fetchAttendanceSummary(options?: { useCache?: boolean }): Promise<AttendanceRecord[]> {
+  // 현재 분기 자동 계산
+  const currentQuarter = getCurrentQuarter();
+  return fetchAttendanceSummaryByQuarter(currentQuarter.year, currentQuarter.quarter);
 }

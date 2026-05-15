@@ -26,8 +26,30 @@ app.get('/api/health', (req, res) => {
 
 // 출석 요약 데이터: AttendanceRecord[] 형태로 반환
 // 현재 AttendanceList / AttendanceTracker 에서 하던 집계 로직을 서버로 옮긴 버전입니다.
+// 쿼리 파라미터: ?year=2026&quarter=1 (기본값: 현재 분기)
 app.get('/api/attendance-summary', async (req, res) => {
   try {
+    // 쿼리 파라미터에서 년도, 분기 추출
+    let year = parseInt(req.query.year, 10);
+    let quarter = parseInt(req.query.quarter, 10);
+
+    // 기본값 설정: 현재 분기
+    if (isNaN(year) || isNaN(quarter)) {
+      const now = new Date();
+      const month = now.getMonth() + 1; // 0-based -> 1-based
+      
+      // 1월은 이전 년도 Q4로 처리
+      if (month === 1) {
+        year = now.getFullYear() - 1;
+        quarter = 4;
+      } else {
+        year = now.getFullYear();
+        quarter = Math.ceil(month / 3);
+      }
+    }
+
+    console.log(`[server] /api/attendance-summary 요청: year=${year}, quarter=${quarter}`);
+
     const { data: members, error: membersError } = await supabase
       .from('members')
       .select('id, name, type, gender, required_attendance, base_attendance_count, status');
@@ -46,18 +68,38 @@ app.get('/api/attendance-summary', async (req, res) => {
       return res.status(500).json({ error: 'Failed to load checkins' });
     }
 
+    // year, quarter 필터 추가
     const { data: sessions, error: sessionsError } = await supabase
       .from('sessions')
-      .select('id, place');
+      .select('id, place, year, quarter');
 
     if (sessionsError) {
       console.error('[server] sessions 조회 실패', sessionsError);
       return res.status(500).json({ error: 'Failed to load sessions' });
     }
 
+    // 해당 분기의 세션만 필터링
+    const filteredSessions = (sessions || []).filter(s => s.year === year && s.quarter === quarter);
+
     const sessionPlaceById = {};
-    (sessions || []).forEach((s) => {
+    filteredSessions.forEach((s) => {
       sessionPlaceById[s.id] = s.place;
+    });
+
+    const { data: seasonProgress, error: seasonProgressError } = await supabase
+      .from('member_season_progress')
+      .select('member_id, status')
+      .eq('year', year)
+      .eq('quarter', quarter);
+
+    if (seasonProgressError) {
+      console.error('[server] member_season_progress 조회 실패', seasonProgressError);
+    }
+
+    // member_id -> status 맵핑
+    const statusByMemberId = {};
+    (seasonProgress || []).forEach((sp) => {
+      statusByMemberId[sp.member_id] = sp.status;
     });
 
     const extraByMemberId = {};
@@ -88,15 +130,38 @@ app.get('/api/attendance-summary', async (req, res) => {
       const mid = m.id;
       const baseAttendance = m.base_attendance_count || 0;
       const extraDb = extraByMemberId[mid] || 0;
+      const attendanceCount = baseAttendance + extraDb;
+
+      // status 결정 우선순위:
+      // 1. members.status가 '부상'이면 → '부상'
+      // 2. member_season_progress에서 상태를 찾으면 → 사용
+      // 3. 없으면 프론트에서 계산
+      let status;
+      if (m.status === '부상') {
+        status = '부상';
+      } else if (statusByMemberId[mid]) {
+        status = statusByMemberId[mid];
+      } else {
+        if (attendanceCount >= (m.required_attendance || 0)) {
+          status = 'full';
+        } else if (attendanceCount === (m.required_attendance || 0) - 1) {
+          status = 'minus_one';
+        } else {
+          status = 'X';
+        }
+      }
 
       return {
         type: m.type || '',
         gender: m.gender || '',
         name: m.name,
         requiredAttendance: m.required_attendance || 0,
-        attendanceCount: baseAttendance + extraDb,
-        status: m.status || 'X',
+        attendanceCount,
+        status,
         records: perMemberPlace[mid] || {},
+        quarter,
+        year,
+        quarterKey: `${year}_Q${quarter}`,
       };
     });
 
