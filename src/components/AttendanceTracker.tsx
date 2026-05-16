@@ -12,6 +12,7 @@ import { getCurrentQuarter, getPreviousQuarter } from '../utils/quarters';
 const AttendanceTracker: React.FC = () => {
     const [inputName, setInputName] = useState('');
     const [record, setRecord] = useState<AttendanceRecord | null>(null);
+    const [currentQuarterInfo, setCurrentQuarterInfo] = useState(getCurrentQuarter());
     const [previousRecord, setPreviousRecord] = useState<AttendanceRecord | null>(null);
     const [suggestions, setSuggestions] = useState<string[]>([]);
     const [allRecords, setAllRecords] = useState<AttendanceRecord[]>([]);
@@ -27,6 +28,7 @@ const AttendanceTracker: React.FC = () => {
             setIsLoading(true);
             try {
                 const currentQuarter = getCurrentQuarter();
+                setCurrentQuarterInfo(currentQuarter);
                 const previousQuarter = getPreviousQuarter(currentQuarter);
                 
                 const [currentData, previousData, placeInfos] = await Promise.all([
@@ -125,7 +127,7 @@ const AttendanceTracker: React.FC = () => {
                         {/* 타이틀 */}
                         <section className="tracker-status" style={{ marginTop: '1.25rem' }}>
                             <h2 className="tracker-title">내 출석 현황</h2>
-                            <p className="tracker-desc">2026년 상반기(2월, 3월, 4월) 출석현황</p>
+                            <p className="tracker-desc">{currentQuarterInfo.label}({currentQuarterInfo.months.join(', ')}월) 출석현황</p>
                         </section>
                         {/* 이름 입력 카드 */}
                         <main className="tracker-main">
