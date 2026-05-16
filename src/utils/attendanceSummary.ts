@@ -1,6 +1,6 @@
 import { supabase } from './supabaseClient';
-import { AttendanceRecord, CURRENT_SEASON } from '../types';
-import { getCurrentQuarter, getQuarterInfo } from './quarters';
+import { AttendanceRecord } from '../types';
+import { getCurrentQuarter } from './quarters';
 
 interface DbMember {
   id: number;
@@ -51,12 +51,7 @@ interface SessionMeta {
   name: string;
 }
 
-let cachedValue: AttendanceRecord[] | null = null;
-let cachedPromise: Promise<AttendanceRecord[]> | null = null;
-
 export function clearAttendanceSummaryCache(): void {
-  cachedValue = null;
-  cachedPromise = null;
 }
 
 /**
@@ -68,9 +63,6 @@ export async function fetchAttendanceSummaryByQuarter(
   year: number,
   quarter: number
 ): Promise<AttendanceRecord[]> {
-  // season 형식으로 변환 (예: "2026-1")
-  const season = `${year}-${quarter}`;
-  
   const sessionsPromise = (async (): Promise<DbSession[]> => {
     const { data, error } = await supabase
       .from<DbSession>('sessions')

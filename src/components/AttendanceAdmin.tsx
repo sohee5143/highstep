@@ -702,8 +702,11 @@ const AttendanceAdmin: React.FC = () => {
           gap: 0.7rem;
         }
         .admin-label {
-          font-weight: 500;
-          color: ${COLORS.textMain};
+          font-size: 0.85rem;
+          font-weight: 600;
+          color: ${COLORS.primary};
+          margin-bottom: 0.2rem;
+          display: block;
         }
         .admin-member-list {
           max-height: 260px;
@@ -847,16 +850,20 @@ const AttendanceAdmin: React.FC = () => {
         }
         .admin-select {
           width: 100%;
-          padding: 0.8rem 1rem;
-          font-size: 1rem;
-          border: none;
+          padding: 0.75rem 1rem;
+          font-size: 0.95rem;
+          border: 1px solid #333;
           border-radius: 12px;
-          background: #222;
-          color: ${COLORS.textMain};
+          background: #181818;
+          color: #ffffff;
           outline: none;
+          transition: all 0.2s ease-in-out;
+          color-scheme: dark;
         }
         .admin-select:focus {
-          box-shadow: 0 0 0 2px ${COLORS.primary};
+          border-color: ${COLORS.primary};
+          background: #1f1f1f;
+          box-shadow: 0 0 0 1px ${COLORS.primary}, 0 0 8px rgba(227, 176, 75, 0.15);
         }
         .admin-schedule-list {
           background: #181818;

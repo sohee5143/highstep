@@ -1,11 +1,19 @@
+/**
+ * 환경 변수 에러 방지 (process is not defined)
+ * 일부 라이브러리에서 브라우저 환경임에도 process를 참조할 때 발생하는 오류를 해결합니다.
+ */
 import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { AttendanceRecord, PlaceInfo } from '../types';
 import { loadAllChecks } from '../utils/localAttendance';
-import { fetchAttendanceSummary, fetchAttendanceSummaryByQuarter } from '../utils/attendanceSummary';
+import { fetchAttendanceSummaryByQuarter } from '../utils/attendanceSummary';
 import { fetchPlacesForCurrentSeason } from '../utils/places';
 import { getCurrentQuarter, getRecentQuarters } from '../utils/quarters';
 import { COLORS } from '../constants/colors';
+
+if (typeof (window as any).process === 'undefined') {
+  (window as any).process = { env: { NODE_ENV: 'development' } };
+}
 
 const AttendanceList: React.FC = () => {
   const checks = loadAllChecks();
@@ -45,7 +53,11 @@ const AttendanceList: React.FC = () => {
     
     // 분기 옵션 생성
     const recentQuarters = getRecentQuarters(8); // 최근 8개 분기
-    const options = recentQuarters.map((q) => ({
+    
+    // 2026년 1분기 이전 데이터는 표시하지 않음 (필터링)
+    const filteredQuarters = recentQuarters.filter(q => q.year >= 2026);
+
+    const options = filteredQuarters.map((q) => ({
       year: q.year,
       quarter: q.quarter,
       label: `${q.year}년 ${
@@ -130,7 +142,7 @@ const AttendanceList: React.FC = () => {
           />
         </Link>
         <div className="list-quarter-selector">
-          <label htmlFor="quarter-select" className="list-quarter-label">분기 선택:</label>
+          
           <select
             id="quarter-select"
             className="list-quarter-select"
@@ -325,33 +337,45 @@ const AttendanceList: React.FC = () => {
         .list-quarter-selector {
           display: flex;
           align-items: center;
-          gap: 0.8rem;
-          margin: 1rem 0;
+          gap: 1rem;
+          margin: 1.2rem 0 0.2rem 0;
           justify-content: center;
+          background: rgba(255, 255, 255, 0.03);
+          padding: 0.6rem 1.2rem;
+          border-radius: 14px;
+          border: 1px solid rgba(255, 255, 255, 0.05);
         }
         .list-quarter-label {
-          font-size: 0.95rem;
-          font-weight: 500;
-          color: ${COLORS.textMain};
+          font-size: 0.85rem;
+          font-weight: 700;
+          color: ${COLORS.primary};
+          text-transform: uppercase;
+          letter-spacing: 0.02em;
         }
         .list-quarter-select {
-          padding: 0.6rem 1rem;
-          border: 2px solid ${COLORS.primary};
-          border-radius: 6px;
-          background: white;
-          color: ${COLORS.textMain};
-          font-size: 0.95rem;
-          font-weight: 500;
+          padding: 0.5rem 2.2rem 0.5rem 1rem;
+          border: 1.5px solid #333;
+          border-radius: 12px;
+          background: #111111;
+          color: #ffffff;
+          font-size: 0.9rem;
+          font-weight: 700;
           cursor: pointer;
           transition: all 0.2s ease;
+          outline: none;
+          color-scheme: dark;
+          appearance: none;
+          background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%23E3B04B' stroke-width='3' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");
+          background-repeat: no-repeat;
+          background-position: right 0.8rem center;
         }
         .list-quarter-select:hover {
-          background: ${COLORS.primaryLight};
+          background-color: #1a1a1a;
+          border-color: ${COLORS.primary};
         }
         .list-quarter-select:focus {
-          outline: none;
-          border-color: ${COLORS.primaryDark};
-          box-shadow: 0 0 0 3px ${COLORS.primaryLight}33;
+          border-color: ${COLORS.primary};
+          box-shadow: 0 0 0 1px ${COLORS.primary}, 0 0 12px rgba(227, 176, 75, 0.1);
         }
         .list-logo {
           width: 96px;
@@ -362,6 +386,7 @@ const AttendanceList: React.FC = () => {
           font-size: 1.4rem;
           font-weight: bold;
           color: ${COLORS.primary};
+          margin: 0;
         }
         .list-desc {
           font-size: 0.95rem;

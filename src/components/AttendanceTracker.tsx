@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { AttendanceRecord } from '../types';
 import { getSummaryForName } from '../utils/localAttendance';
-import { fetchAttendanceSummary, fetchAttendanceSummaryByQuarter } from '../utils/attendanceSummary';
+import { fetchAttendanceSummaryByQuarter } from '../utils/attendanceSummary';
 import WorkoutCalendar from './WorkoutCalendar';
 import { fetchPlacesForCurrentSeason } from '../utils/places';
 import { PlaceInfo } from '../types';
@@ -27,7 +27,7 @@ const AttendanceTracker: React.FC = () => {
             setIsLoading(true);
             try {
                 const currentQuarter = getCurrentQuarter();
-                const previousQuarter = getPreviousQuarter(currentQuarter.year, currentQuarter.quarter);
+                const previousQuarter = getPreviousQuarter(currentQuarter);
                 
                 const [currentData, previousData, placeInfos] = await Promise.all([
                     fetchAttendanceSummaryByQuarter(currentQuarter.year, currentQuarter.quarter),
@@ -273,17 +273,20 @@ const AttendanceTracker: React.FC = () => {
                             {/* 이전 분기 정보 (아코디언) */}
                             {record && previousRecord && (
                                 <div className="tracker-card tracker-previous-card">
+                                    <span className="tracker-previous-label">이전 분기 기록</span>
                                     <button
                                         className="tracker-previous-header"
                                         onClick={() => setShowPreviousQuarter(!showPreviousQuarter)}
                                         aria-expanded={showPreviousQuarter}
                                     >
-                                        <span className="tracker-previous-title">
-                                            📊 이전 분기 기록 {previousRecord.year}년 {previousRecord.quarter}분기
-                                        </span>
-                                        <span className="tracker-previous-toggle">
-                                            {showPreviousQuarter ? '▼' : '▶'}
-                                        </span>
+                                        <div className={`tracker-previous-box ${showPreviousQuarter ? 'active' : ''}`}>
+                                            <span className="tracker-previous-quarter-text">
+                                                {previousRecord.year}년 {previousRecord.quarter}분기
+                                            </span>
+                                            <span className="tracker-previous-arrow">
+                                                {showPreviousQuarter ? '▲' : '▶'}
+                                            </span>
+                                        </div>
                                     </button>
                                     {showPreviousQuarter && (
                                         <div className="tracker-previous-content">
@@ -749,42 +752,60 @@ const AttendanceTracker: React.FC = () => {
                         background: #222;
                     }
                     .tracker-previous-card {
-                        background: #1A1A1A;
-                        border: 1px solid rgba(227,176,75,0.3);
-                        border-radius: 16px;
-                        padding: 0;
-                        overflow: hidden;
+                        background: transparent;
+                        box-shadow: none;
+                        padding: 0.5rem 0;
+                        gap: 0.6rem;
+                    }
+                    .tracker-previous-label {
+                        font-size: 0.85rem;
+                        font-weight: 700;
+                        color: ${COLORS.textSub};
+                        padding-left: 0.2rem;
+                        letter-spacing: 0.02em;
                     }
                     .tracker-previous-header {
                         width: 100%;
-                        background: rgba(227,176,75,0.08);
+                        background: transparent;
                         border: none;
-                        padding: 1rem 1.2rem;
+                        padding: 0;
                         cursor: pointer;
+                        outline: none;
+                    }
+                    .tracker-previous-box {
+                        background: #111;
+                        border: 1px solid #333;
+                        border-radius: 12px;
+                        padding: 0.85rem 1.2rem;
                         display: flex;
                         align-items: center;
                         justify-content: space-between;
-                        gap: 1rem;
-                        transition: background 0.2s ease;
+                        transition: all 0.2s ease-in-out;
                     }
-                    .tracker-previous-header:hover {
-                        background: rgba(227,176,75,0.12);
+                    .tracker-previous-box:hover {
+                        background: #181818;
+                        border-color: ${COLORS.primary};
                     }
-                    .tracker-previous-title {
-                        font-size: 1rem;
-                        font-weight: bold;
+                    .tracker-previous-box.active {
+                        border-color: ${COLORS.primary};
+                        background: rgba(227, 176, 75, 0.05);
+                    }
+                    .tracker-previous-quarter-text {
+                        font-size: 1.05rem;
+                        font-weight: 700;
                         color: ${COLORS.primary};
-                        text-align: left;
                     }
-                    .tracker-previous-toggle {
+                    .tracker-previous-arrow {
                         color: ${COLORS.textSub};
-                        font-size: 0.9rem;
-                        transition: transform 0.2s ease;
+                        font-size: 0.8rem;
                         flex-shrink: 0;
                     }
                     .tracker-previous-content {
-                        padding: 1.2rem;
-                        border-top: 1px solid rgba(227,176,75,0.2);
+                        background: #111;
+                        border-radius: 16px;
+                        padding: 1.5rem 1.2rem;
+                        margin-top: 0.5rem;
+                        border: 1px solid rgba(255, 255, 255, 0.05);
                         display: flex;
                         flex-direction: column;
                         gap: 1rem;
