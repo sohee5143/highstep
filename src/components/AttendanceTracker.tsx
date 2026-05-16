@@ -2,33 +2,43 @@ import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { AttendanceRecord } from '../types';
 import { getSummaryForName } from '../utils/localAttendance';
-import { fetchAttendanceSummary } from '../utils/attendanceSummary';
+import { fetchAttendanceSummary, fetchAttendanceSummaryByQuarter } from '../utils/attendanceSummary';
 import WorkoutCalendar from './WorkoutCalendar';
 import { fetchPlacesForCurrentSeason } from '../utils/places';
 import { PlaceInfo } from '../types';
 import { COLORS } from '../constants/colors';
+import { getCurrentQuarter, getPreviousQuarter } from '../utils/quarters';
 
 const AttendanceTracker: React.FC = () => {
     const [inputName, setInputName] = useState('');
     const [record, setRecord] = useState<AttendanceRecord | null>(null);
+    const [previousRecord, setPreviousRecord] = useState<AttendanceRecord | null>(null);
     const [suggestions, setSuggestions] = useState<string[]>([]);
     const [allRecords, setAllRecords] = useState<AttendanceRecord[]>([]);
+    const [allPreviousRecords, setAllPreviousRecords] = useState<AttendanceRecord[]>([]);
     const [dbMemberNames, setDbMemberNames] = useState<string[]>([]);
     const [places, setPlaces] = useState<PlaceInfo[]>([]);
     const [isLoading, setIsLoading] = useState(true);
+    const [showPreviousQuarter, setShowPreviousQuarter] = useState(false);
 
     useEffect(() => {
         let cancelled = false;
         const load = async () => {
             setIsLoading(true);
             try {
-                const [data, placeInfos] = await Promise.all([
-                    fetchAttendanceSummary(),
+                const currentQuarter = getCurrentQuarter();
+                const previousQuarter = getPreviousQuarter(currentQuarter.year, currentQuarter.quarter);
+                
+                const [currentData, previousData, placeInfos] = await Promise.all([
+                    fetchAttendanceSummaryByQuarter(currentQuarter.year, currentQuarter.quarter),
+                    fetchAttendanceSummaryByQuarter(previousQuarter.year, previousQuarter.quarter),
                     fetchPlacesForCurrentSeason(),
                 ]);
+                
                 if (cancelled) return;
-                setAllRecords(data);
-                setDbMemberNames(data.map((r) => r.name));
+                setAllRecords(currentData);
+                setAllPreviousRecords(previousData);
+                setDbMemberNames(currentData.map((r) => r.name));
                 setPlaces(placeInfos);
             } finally {
                 if (!cancelled) setIsLoading(false);
@@ -64,14 +74,18 @@ const AttendanceTracker: React.FC = () => {
     const handleSearch = () => {
         if (isLoading) return;
         const found = allRecords.find((r) => r.name === inputName.trim());
+        const previousFound = allPreviousRecords.find((r) => r.name === inputName.trim());
         setRecord(found || null);
+        setPreviousRecord(previousFound || null);
         setSuggestions([]);
     };
 
     const handleSelectSuggestion = (name: string) => {
         setInputName(name);
         const found = allRecords.find((r) => r.name === name);
+        const previousFound = allPreviousRecords.find((r) => r.name === name);
         setRecord(found || null);
+        setPreviousRecord(previousFound || null);
         setSuggestions([]);
     };
 
@@ -255,6 +269,78 @@ const AttendanceTracker: React.FC = () => {
                                     <span className="tracker-error-desc">이름을 정확히 입력해주세요</span>
                                 </div>
                             ) : null}
+
+                            {/* 이전 분기 정보 (아코디언) */}
+                            {record && previousRecord && (
+                                <div className="tracker-card tracker-previous-card">
+                                    <button
+                                        className="tracker-previous-header"
+                                        onClick={() => setShowPreviousQuarter(!showPreviousQuarter)}
+                                        aria-expanded={showPreviousQuarter}
+                                    >
+                                        <span className="tracker-previous-title">
+                                            📊 이전 분기 기록 {previousRecord.year}년 {previousRecord.quarter}분기
+                                        </span>
+                                        <span className="tracker-previous-toggle">
+                                            {showPreviousQuarter ? '▼' : '▶'}
+                                        </span>
+                                    </button>
+                                    {showPreviousQuarter && (
+                                        <div className="tracker-previous-content">
+                                            <div className="tracker-result-stats">
+                                                <div className="tracker-stat">
+                                                    <span className="tracker-stat-label">필요 출석</span>
+                                                    <span className="tracker-stat-value">{previousRecord.requiredAttendance}</span>
+                                                </div>
+                                                <div className="tracker-stat">
+                                                    <span className="tracker-stat-label">출석 현황</span>
+                                                    {previousRecord.status === '부상' ? (
+                                                        <span style={{
+                                                            fontSize: '1.25rem',
+                                                            fontWeight: 'bold',
+                                                            color: '#F59E0B'
+                                                        }}>
+                                                            부상
+                                                        </span>
+                                                    ) : (
+                                                        <span style={{
+                                                            fontSize: '1.25rem',
+                                                            fontWeight: 'bold',
+                                                            color: (previousRecord.attendanceCount >= previousRecord.requiredAttendance || previousRecord.attendanceCount === previousRecord.requiredAttendance - 1) ? '#22c55e' : '#ef4444'
+                                                        }}>
+                                                            {previousRecord.attendanceCount}회 {(previousRecord.attendanceCount >= previousRecord.requiredAttendance || previousRecord.attendanceCount === previousRecord.requiredAttendance - 1) ? '✓' : 'X'}
+                                                        </span>
+                                                    )}
+                                                </div>
+                                            </div>
+                                            <div className="tracker-attended-list" style={{ marginTop: '1rem' }}>
+                                                <span className="tracker-attended-label">정기운동 출석 리스트</span>
+                                                <div className="tracker-attended-items">
+                                                    {places.filter((p) => previousRecord.records[p.key]).map((p) => {
+                                                        const value = previousRecord.records[p.key];
+                                                        return (
+                                                            <div key={p.key} className="tracker-attended-item">
+                                                                <div className="tracker-attended-left">
+                                                                    <span className="tracker-attended-place">{p.name}</span>
+                                                                    {p.dateLabel && (
+                                                                        <span className="tracker-attended-date">{p.dateLabel}</span>
+                                                                    )}
+                                                                </div>
+                                                                <span className="tracker-attended-badge">
+                                                                    {value === '25분기 반영' ? '25분기' : '✓'}
+                                                                </span>
+                                                            </div>
+                                                        );
+                                                    })}
+                                                    {!places.some((p) => previousRecord.records[p.key]) && (
+                                                        <span className="tracker-no-attendance">아직 출석 기록이 없습니다</span>
+                                                    )}
+                                                </div>
+                                            </div>
+                                        </div>
+                                    )}
+                                </div>
+                            )}
                         </main>
                         <div className="tracker-nav" aria-label="페이지 이동">
                             <Link to="/rank" className="tracker-nav-btn tracker-nav-btn-rank" aria-label="출석 랭킹 보기">
@@ -661,6 +747,47 @@ const AttendanceTracker: React.FC = () => {
                     }
                     .tracker-suggestion-item:hover {
                         background: #222;
+                    }
+                    .tracker-previous-card {
+                        background: #1A1A1A;
+                        border: 1px solid rgba(227,176,75,0.3);
+                        border-radius: 16px;
+                        padding: 0;
+                        overflow: hidden;
+                    }
+                    .tracker-previous-header {
+                        width: 100%;
+                        background: rgba(227,176,75,0.08);
+                        border: none;
+                        padding: 1rem 1.2rem;
+                        cursor: pointer;
+                        display: flex;
+                        align-items: center;
+                        justify-content: space-between;
+                        gap: 1rem;
+                        transition: background 0.2s ease;
+                    }
+                    .tracker-previous-header:hover {
+                        background: rgba(227,176,75,0.12);
+                    }
+                    .tracker-previous-title {
+                        font-size: 1rem;
+                        font-weight: bold;
+                        color: ${COLORS.primary};
+                        text-align: left;
+                    }
+                    .tracker-previous-toggle {
+                        color: ${COLORS.textSub};
+                        font-size: 0.9rem;
+                        transition: transform 0.2s ease;
+                        flex-shrink: 0;
+                    }
+                    .tracker-previous-content {
+                        padding: 1.2rem;
+                        border-top: 1px solid rgba(227,176,75,0.2);
+                        display: flex;
+                        flex-direction: column;
+                        gap: 1rem;
                     }
                     @media (min-width: 600px) {
                         .tracker-root { align-items: center; }
