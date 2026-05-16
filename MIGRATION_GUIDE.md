@@ -10,17 +10,42 @@
 
 ## 🚀 마이그레이션 단계
 
-### 1단계: Supabase 콘솔 접속
-1. [Supabase 콘솔](https://app.supabase.com)에 로그인
-2. 해당 프로젝트 선택
-3. 좌측 메뉴에서 "SQL Editor" 클릭
+### 0단계: 현재 DB 스키마 확인 (필수!)
 
-### 2단계: SQL 스크립트 실행
-1. "SQL Editor"에서 "+" 버튼으로 새 쿼리 생성
+1. [Supabase 콘솔](https://app.supabase.com)에 로그인
+2. "SQL Editor"에서 새 쿼리 생성
+3. 아래 쿼리를 실행해서 현재 테이블들 확인:
+```sql
+SELECT table_name 
+FROM information_schema.tables 
+WHERE table_schema = 'public'
+ORDER BY table_name;
+```
+
+**결과를 확인하고 다음 단계로 진행하세요:**
+- ✅ `member_season_progress` 테이블이 **있으면**: "1단계" 진행
+- ❌ `member_season_progress` 테이블이 **없으면**: "1-1단계" 진행
+
+### 1-1단계: 테이블이 없는 경우 (테이블 생성 + 분기 설정)
+
+1. "SQL Editor"에서 새 쿼리 생성
+2. [scripts/sql/migrate_to_quarter_system_v2.sql](./scripts/sql/migrate_to_quarter_system_v2.sql) 파일의 전체 내용 복사
+3. Supabase SQL Editor에 붙여넣기
+4. **"Run" 버튼 클릭**
+
+이 스크립트는 다음을 수행합니다:
+- 필요한 모든 테이블 생성 (members, sessions, member_season_progress 등)
+- year, quarter 컬럼 추가
+- 인덱스 및 함수 생성
+
+### 1단계: 테이블이 있는 경우 (컬럼 추가만)
+
+1. "SQL Editor"에서 새 쿼리 생성
 2. [scripts/sql/migrate_to_quarter_system.sql](./scripts/sql/migrate_to_quarter_system.sql) 파일의 전체 내용 복사
 3. Supabase SQL Editor에 붙여넣기
 4. **"Run" 버튼 클릭**
 
+### 2단계: SQL 스크립트 실행
 ### 3단계: 마이그레이션 완료 확인
 
 마이그레이션 후 다음을 확인하세요:

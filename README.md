@@ -2,6 +2,13 @@
 
 하이스텝(HighStep) 클라이밍 동아리의 출석 현황을 조회하고, 관리자가 출석 체크를 기록할 수 있는 React 앱입니다.
 
+## 📚 주요 문서
+
+- **[DB 스키마](./DB_SCHEMA.md)**: 데이터베이스 테이블 구조
+- **[분기 시스템 마이그레이션](./MIGRATION_GUIDE.md)**: 단일 분기 → 다중 분기 전환 가이드
+- **[테스트 가이드](./TEST_GUIDE.md)**: 분기 시스템 테스트 시나리오
+- **[마이그레이션 완료 보고서](./MIGRATION_SUMMARY.md)**: 프로젝트 진행 상황
+
 ## 기술 스택
 
 - React 17 + TypeScript (CRA / react-scripts)

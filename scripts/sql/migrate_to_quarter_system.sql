@@ -1,6 +1,9 @@
 -- 분기 시스템 마이그레이션
 -- 기존 member_season_progress 테이블에 year, quarter 컬럼 추가
 -- season 형식: '2026-1' → year: 2026, quarter: 1로 파싱
+-- 
+-- ⚠️ 주의: 이 스크립트를 실행하기 전에 테이블이 없으면 먼저 생성해야 합니다!
+-- 테이블이 없으면 migrate_to_quarter_system_v2.sql을 사용하세요.
 
 BEGIN;
 
