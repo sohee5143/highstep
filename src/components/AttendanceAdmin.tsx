@@ -542,7 +542,7 @@ const AttendanceAdmin: React.FC = () => {
             aria-label="출석 체크 완료"
             className={"admin-btn" + (!isFormValid ? " disabled" : "")}
           >
-            {isFormValid ? '✓ 출석 체크' : '부원과 일정을 선택하세요'}
+            {isFormValid ? `✓ ${selectedNames.length}명 출석 체크` : '부원과 일정을 선택하세요'}
           </button>
         </div>
         {/* 최근 체크 리스트 카드 */}
@@ -970,14 +970,9 @@ const AttendanceAdmin: React.FC = () => {
         }
         .admin-list-items {
           display: flex;
-          border-radius: 8px;
-          padding: 0.5rem 1rem;
-          display: flex;
-          align-items: center;
-          justify-content: space-between;
-          gap: 0.7rem;
-          color: ${COLORS.success};
-          font-size: 0.95rem;
+          flex-direction: column;
+          gap: 0.5rem;
+          width: 100%;
         }
         .admin-list-left {
           display: flex;
@@ -990,7 +985,15 @@ const AttendanceAdmin: React.FC = () => {
           gap: 0.5rem;
         }
         .admin-list-item {
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
           background: #181818;
+          padding: 0.75rem 1rem;
+          border-radius: 12px;
+          border: 1px solid rgba(255, 255, 255, 0.05);
+          color: ${COLORS.success};
+          font-size: 0.95rem;
         }
         .admin-nav-btn {
           display: inline-flex;

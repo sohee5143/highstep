@@ -110,7 +110,15 @@ const AttendanceTracker: React.FC = () => {
             <div className="tracker-root">
                 {/* 상단 로고 헤더 */}
                 <header className="tracker-header">
-                    <Link to="/" aria-label="메인 페이지로 이동">
+                    <Link 
+                        to="/" 
+                        aria-label="메인 페이지로 이동"
+                        onClick={() => {
+                            setInputName('');
+                            setRecord(null);
+                            setSuggestions([]);
+                        }}
+                    >
                         <img
                             src="/assets/logo_169.jpg"
                             alt="HighStep Logo"

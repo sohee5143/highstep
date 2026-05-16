@@ -19,12 +19,14 @@ const AttendanceList: React.FC = () => {
   const checks = loadAllChecks();
   const currentQuarter = getCurrentQuarter();
 
+  const [selectedYear, setSelectedYear] = useState(currentQuarter.year);
+  const [selectedQuarter, setSelectedQuarter] = useState(currentQuarter.quarter);
+  const [selectedQuarterInfo, setSelectedQuarterInfo] = useState(currentQuarter);
+
   const [records, setRecords] = useState<AttendanceRecord[]>([]);
   const [dbMemberNames, setDbMemberNames] = useState<string[]>([]);
   const [places, setPlaces] = useState<PlaceInfo[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [selectedYear, setSelectedYear] = useState(currentQuarter.year);
-  const [selectedQuarter, setSelectedQuarter] = useState(currentQuarter.quarter);
   const [quarterOptions, setQuarterOptions] = useState<Array<{ year: number; quarter: number; label: string }>>([]);
 
   const extraByName: Record<string, number> = {};
@@ -52,7 +54,7 @@ const AttendanceList: React.FC = () => {
     let cancelled = false;
     
     // 분기 옵션 생성
-    const recentQuarters = getRecentQuarters(8); // 최근 8개 분기
+    const recentQuarters = getRecentQuarters(12); // 최근 12개 분기
     
     // 2026년 1분기 이전 데이터는 표시하지 않음 (필터링)
     const filteredQuarters = recentQuarters.filter(q => q.year >= 2026);
@@ -60,17 +62,18 @@ const AttendanceList: React.FC = () => {
     const options = filteredQuarters.map((q) => ({
       year: q.year,
       quarter: q.quarter,
-      label: `${q.year}년 ${
-        q.quarter === 1 ? '1분기(1-3월)' :
-        q.quarter === 2 ? '2분기(4-6월)' :
-        q.quarter === 3 ? '3분기(7-9월)' :
-        '4분기(10-12월)'
-      }`,
+      label: `${q.label} (${q.months.join(', ')}월)`,
     }));
     
     if (cancelled) return;
     setQuarterOptions(options);
   }, []);
+
+  useEffect(() => {
+    // 선택된 분기에 대한 상세 정보 업데이트
+    const info = getRecentQuarters(24).find(q => q.year === selectedYear && q.quarter === selectedQuarter);
+    if (info) setSelectedQuarterInfo(info);
+  }, [selectedYear, selectedQuarter]);
 
   useEffect(() => {
     let cancelled = false;
@@ -82,9 +85,19 @@ const AttendanceList: React.FC = () => {
           fetchPlacesForCurrentSeason(),
         ]);
         if (cancelled) return;
+
+        // 선택된 분기에 해당하는 월(months)의 장소들만 필터링하여 테이블 컬럼을 구성합니다.
+        // 예: 2분기 선택 시 5, 6, 7월 데이터만 화면에 노출됩니다.
+        const info = getRecentQuarters(24).find(q => q.year === selectedYear && q.quarter === selectedQuarter);
+        const filteredPlaces = !info ? placeInfos : placeInfos.filter(p => {
+          if (!p.dateLabel) return true;
+          const month = parseInt(p.dateLabel.split('/')[0], 10);
+          return info.months.includes(month);
+        });
+
         setRecords(data);
         setDbMemberNames(data.map((r) => r.name));
-        setPlaces(placeInfos);
+        setPlaces(filteredPlaces);
       } finally {
         if (!cancelled) setIsLoading(false);
       }
@@ -153,15 +166,15 @@ const AttendanceList: React.FC = () => {
               setSelectedQuarter(parseInt(quarter, 10));
             }}
           >
-            {quarterOptions.map((opt) => (
-              <option key={`${opt.year}-${opt.quarter}`} value={`${opt.year}-${opt.quarter}`}>
+            {quarterOptions.map((opt, idx) => (
+              <option key={idx} value={`${opt.year}-${opt.quarter}`}>
                 {opt.label}
               </option>
             ))}
           </select>
         </div>
-        <h2 className="list-title">{selectedYear}년 {selectedQuarter}분기 출석현황</h2>
-        <p className="list-desc">정기운동 출석을 한눈에 확인하세요</p>
+        <h2 className="list-title">{selectedQuarterInfo.label} 출석현황</h2>
+        <p className="list-desc">{selectedQuarterInfo.months.join(', ')}월 정기운동 현황을 확인하세요</p>
       </header>
       <main className="list-main">
         <div className="list-card">
@@ -217,14 +230,18 @@ const AttendanceList: React.FC = () => {
                           {places.map((p) => {
                             const placeKey = p.key;
                             const value = record.records[placeKey];
-                            const display = value === 1 ? 'O' : value || '';
+                                  let display = value === 1 ? '✓' : value || '';
+                                  const isAttended = value === 1 || value === '25분기 반영';
+                                  
+                                  if (value === '25분기 반영') display = '25';
+
                             return (
                               <td
                                 key={placeKey}
                                 className={
                                   monthBoundaryByPlace[placeKey]
                                     ? 'list-cell-center is-boundary'
-                                    : 'list-cell-center'
+                                          : (isAttended ? 'list-cell-center list-cell-attended' : 'list-cell-center')
                                 }
                               >
                                 {display}
