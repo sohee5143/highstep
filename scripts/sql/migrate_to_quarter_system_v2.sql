@@ -66,7 +66,7 @@ CREATE TABLE IF NOT EXISTS member_season_progress (
   created_at TIMESTAMP DEFAULT NOW(),
   updated_at TIMESTAMP DEFAULT NOW(),
   FOREIGN KEY (member_id) REFERENCES members(id) ON DELETE CASCADE,
-  UNIQUE(member_id, season) WHERE deleted_at IS NULL
+  UNIQUE(member_id, season)
 );
 
 -- checkins 테이블
