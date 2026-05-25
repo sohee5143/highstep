@@ -11,8 +11,13 @@ import { fetchPlacesForCurrentSeason } from '../utils/places';
 import { getCurrentQuarter, getRecentQuarters } from '../utils/quarters';
 import { COLORS } from '../constants/colors';
 
-if (typeof (window as any).process === 'undefined') {
-  (window as any).process = { env: { NODE_ENV: 'development' } };
+/**
+ * 환경 변수 에러 방지 (process is not defined)
+ * 일부 라이브러리에서 브라우저 환경임에도 process를 참조할 때 발생하는 오류를 해결합니다.
+ * 주의: 'fs', 'path', 'mkdirp'와 같은 Node.js 전용 라이브러리를 임포트하지 않았는지 확인하세요.
+ */
+if (typeof window !== 'undefined' && typeof (window as any).process === 'undefined') {
+  (window as any).process = { env: { NODE_ENV: process.env.NODE_ENV || 'production' } };
 }
 
 const AttendanceList: React.FC = () => {
