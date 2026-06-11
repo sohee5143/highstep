@@ -211,7 +211,8 @@ const AttendanceAdmin: React.FC = () => {
       const response = await supabase
         .from('members')
         .update({ status: nextStatus })
-        .eq('id', memberId);
+        .eq('id', memberId)
+        .select();
 
       console.log('[admin] 전체 응답:', JSON.stringify(response, null, 2));
       console.log('[admin] response.data:', response.data);
