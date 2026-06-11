@@ -208,24 +208,21 @@ const AttendanceAdmin: React.FC = () => {
     try {
       console.log('[admin] updateMemberStatus 시작:', { memberId, nextStatus });
       
-      // 서버 API를 사용하여 RLS 정책 우회
-      const response = await fetch('/api/admin/members/' + memberId + '/status', {
-        method: 'PATCH',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ status: nextStatus }),
-      });
+      const response = await supabase
+        .from('members')
+        .update({ status: nextStatus })
+        .eq('id', memberId)
+        .select();
 
-      const result = await response.json();
+      console.log('[admin] 응답:', JSON.stringify(response, null, 2));
 
-      if (!response.ok) {
-        console.error('[admin] member status 업데이트 실패:', result);
-        alert(`부상 상태 업데이트에 실패했습니다.\n오류: ${result.error}`);
+      if (response.error) {
+        console.error('[admin] members update 실패:', JSON.stringify(response.error, null, 2));
+        alert(`부상 상태 업데이트에 실패했습니다.\n오류: ${response.error.message}`);
         return;
       }
 
-      console.log('[admin] DB 업데이트 성공');
+      console.log('[admin] DB 업데이트 성공, affected rows:', response.data?.length || 0);
 
       // UI 즉시 업데이트
       const updatedMember = members.find((m) => m.id === memberId);
