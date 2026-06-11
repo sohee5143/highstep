@@ -333,6 +333,37 @@ app.delete('/api/admin/checkins', async (req, res) => {
   }
 });
 
+// 부원 상태 업데이트 엔드포인트 (부상 등록/회복 처리용)
+app.patch('/api/admin/members/:id/status', async (req, res) => {
+  const { id } = req.params;
+  const { status } = req.body || {};
+
+  if (!id || !status) {
+    return res.status(400).json({ error: 'id and status are required' });
+  }
+
+  try {
+    const memberId = parseInt(id, 10);
+    
+    const { data, error } = await supabase
+      .from('members')
+      .update({ status })
+      .eq('id', memberId)
+      .select();
+
+    if (error) {
+      console.error('[server] member status update 실패', error);
+      return res.status(500).json({ error: 'Failed to update member status' });
+    }
+
+    console.log('[server] member status 업데이트 성공:', memberId, status);
+    res.json({ ok: true, data });
+  } catch (err) {
+    console.error('[server] /api/admin/members/:id/status 예외', err);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
 const PORT = process.env.PORT || 4000;
 app.listen(PORT, () => {
   console.log(`[server] listening on port ${PORT}`);
