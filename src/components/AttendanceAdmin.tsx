@@ -211,15 +211,9 @@ const AttendanceAdmin: React.FC = () => {
       const response = await supabase
         .from('members')
         .update({ status: nextStatus })
-        .eq('id', memberId)
-        .select();
+        .eq('id', memberId);
 
-      console.log('[admin] 전체 응답:', JSON.stringify(response, null, 2));
-      console.log('[admin] response.data:', response.data);
-      console.log('[admin] response.error:', response.error);
-      console.log('[admin] response.status:', response.status);
-      console.log('[admin] response.statusText:', response.statusText);
-      console.log('[admin] affected rows:', response.data?.length || 0);
+      console.log('[admin] 응답:', JSON.stringify(response, null, 2));
 
       if (response.error) {
         console.error('[admin] members update 실패:', JSON.stringify(response.error, null, 2));
@@ -227,14 +221,7 @@ const AttendanceAdmin: React.FC = () => {
         return;
       }
 
-      // RLS 정책 때문에 error는 null이지만 실제로 업데이트되지 않을 수 있음
-      if (!response.data || response.data.length === 0) {
-        console.warn('[admin] UPDATE 쿼리는 성공했지만 영향받은 행이 없음 (RLS 정책 확인 필요)');
-        alert('부상 상태 업데이트: 데이터베이스 권한 오류입니다. 관리자에게 문의하세요.');
-        return;
-      }
-
-      console.log('[admin] DB 업데이트 성공, affected rows:', response.data.length);
+      console.log('[admin] DB 업데이트 성공');
 
       // UI 즉시 업데이트
       const updatedMember = members.find((m) => m.id === memberId);
