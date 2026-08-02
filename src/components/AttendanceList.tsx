@@ -540,13 +540,13 @@ const AttendanceList: React.FC = () => {
         .list-person-card {
           border-radius: 12px;
           border: 1px solid #333;
-          padding: 0.75rem 0.9rem;
+          padding: 0.65rem 0.8rem;
           margin-bottom: 0.75rem;
           background: #111;
         }
         .list-person-header {
           display: flex;
-          align-items: center;
+          align-items: flex-start;
           justify-content: space-between;
           gap: 0.75rem;
           margin-bottom: 0.5rem;
@@ -555,14 +555,19 @@ const AttendanceList: React.FC = () => {
         }
         .list-person-name {
           font-weight: 700;
-          font-size: 1rem;
+          font-size: 0.98rem;
+          white-space: nowrap;
+          overflow: hidden;
+          text-overflow: ellipsis;
+          max-width: 100%;
         }
         .list-person-header-right {
           display: flex;
-          align-items: center;
+          align-items: flex-start;
           justify-content: flex-end;
           gap: 0.45rem;
           flex-wrap: wrap;
+          min-width: 0;
         }
         .list-count-badge {
           display: inline-flex;
