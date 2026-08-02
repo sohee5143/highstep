@@ -6,6 +6,7 @@ import AdminGate from './components/AdminGate';
 const AttendanceAdmin = React.lazy(() => import('./components/AttendanceAdmin'));
 const AttendanceList = React.lazy(() => import('./components/AttendanceList'));
 const AttendanceRank = React.lazy(() => import('./components/AttendanceRank'));
+const HalfYearCompletion = React.lazy(() => import('./components/HalfYearCompletion'));
 
 export default function AttendanceApp() {
   return (
@@ -14,6 +15,11 @@ export default function AttendanceApp() {
         <Route path="/rank">
           <React.Suspense fallback={null}>
             <AttendanceRank />
+          </React.Suspense>
+        </Route>
+        <Route path="/half">
+          <React.Suspense fallback={null}>
+            <HalfYearCompletion />
           </React.Suspense>
         </Route>
         <Route path="/list">

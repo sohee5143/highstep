@@ -47,11 +47,29 @@ const AttendanceList: React.FC = () => {
         isComplete: false,
       };
     }
-    const isComplete = effectiveCount >= record.requiredAttendance || effectiveCount === record.requiredAttendance - 1;
+
+    // 한 분기 4회는 현재 분기만으로는 완전 통과가 아니라
+    // 반기(1-2분기 또는 3-4분기) 기준에서만 예외로 인정됩니다.
+    if (effectiveCount >= record.requiredAttendance) {
+      return {
+        isInjured: false,
+        label: '✓',
+        isComplete: true,
+      };
+    }
+
+    if (effectiveCount === record.requiredAttendance - 1) {
+      return {
+        isInjured: false,
+        label: '△',
+        isComplete: false,
+      };
+    }
+
     return {
       isInjured: false,
-      label: isComplete ? '✓' : 'X',
-      isComplete,
+      label: 'X',
+      isComplete: false,
     };
   }, []);
 

@@ -188,9 +188,14 @@ const AttendanceRank: React.FC = () => {
                     </details>
                   </div>
                 </div>
-                <Link to="/list" className="rank-link" aria-label="전체 출석현황 보기">
-                  전체 출석현황
-                </Link>
+                <div className="rank-link-group">
+                  <Link to="/list" className="rank-link" aria-label="전체 출석현황 보기">
+                    전체 출석현황
+                  </Link>
+                  <Link to="/half" className="rank-link" aria-label="반기 출석 완료자 보기">
+                    반기 출석 완료자
+                  </Link>
+                </div>
               </div>
 
               <div className="rank-podium" role="group" aria-label="출석왕 시상대">
@@ -362,6 +367,13 @@ const AttendanceRank: React.FC = () => {
           box-shadow: 0 10px 24px rgba(0,0,0,0.35);
           text-align: left;
           white-space: normal;
+        }
+        .rank-link-group {
+          display: flex;
+          gap: 0.75rem;
+          align-items: center;
+          flex-wrap: wrap;
+          justify-content: flex-end;
         }
         .rank-link {
           font-size: 0.85rem;
