@@ -552,22 +552,27 @@ const AttendanceList: React.FC = () => {
           margin-bottom: 0.5rem;
           padding-bottom: 0.45rem;
           border-bottom: 1px solid rgba(255,255,255,0.08);
+          flex-wrap: nowrap;
         }
         .list-person-name {
+          display: block;
           font-weight: 700;
           font-size: 0.98rem;
           white-space: nowrap;
           overflow: hidden;
           text-overflow: ellipsis;
           max-width: 100%;
+          flex: 1 1 auto;
+          min-width: 0;
         }
         .list-person-header-right {
           display: flex;
           align-items: flex-start;
           justify-content: flex-end;
           gap: 0.45rem;
-          flex-wrap: wrap;
+          flex-wrap: nowrap;
           min-width: 0;
+          flex-shrink: 0;
         }
         .list-count-badge {
           display: inline-flex;
@@ -579,6 +584,7 @@ const AttendanceList: React.FC = () => {
           font-weight: 800;
           line-height: 1.2;
           white-space: nowrap;
+          flex-shrink: 0;
         }
         .list-count-badge-ok {
           background: rgba(34,197,94,0.14);
@@ -597,6 +603,8 @@ const AttendanceList: React.FC = () => {
           border-radius: 999px;
           font-size: 0.75rem;
           font-weight: 600;
+          white-space: nowrap;
+          flex-shrink: 0;
         }
         .list-status-chip-ok {
           background: rgba(34,197,94,0.12);
@@ -712,6 +720,15 @@ const AttendanceList: React.FC = () => {
           .list-card {
             padding: 0.75rem;
             overflow-x: visible;
+          }
+          .list-person-header {
+            gap: 0.55rem;
+          }
+          .list-person-name {
+            font-size: 0.95rem;
+          }
+          .list-person-header-right {
+            gap: 0.35rem;
           }
           .list-table-wrapper.list-desktop-only {
             display: none;

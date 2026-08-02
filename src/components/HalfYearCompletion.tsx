@@ -200,11 +200,9 @@ const HalfYearCompletion: React.FC = () => {
                     <td className={record.isComplete ? 'half-complete' : 'half-failed'}>
                       {record.combinedStatus === '부상'
                         ? '부상'
-                        : record.combinedStatus === 'full'
+                        : record.combinedStatus === 'full' || record.combinedStatus === 'minus_one'
                           ? '완료'
-                          : record.combinedStatus === 'minus_one'
-                            ? '완료(예외)'
-                            : '미완'}
+                          : '미완'}
                     </td>
                   </tr>
                 ))}
