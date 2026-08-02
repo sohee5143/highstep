@@ -242,13 +242,13 @@ const HalfYearCompletion: React.FC = () => {
           margin-bottom: 0.5rem;
         }
         .half-title {
-          font-size: 1.5rem;
+          font-size: 1.3rem;
           font-weight: bold;
           color: ${COLORS.primary};
           margin: 0;
         }
         .half-desc {
-          font-size: 0.95rem;
+          font-size: 0.9rem;
           color: ${COLORS.textSub};
         }
         .half-main {
@@ -264,7 +264,7 @@ const HalfYearCompletion: React.FC = () => {
           background: ${COLORS.cardBg};
           border-radius: 16px;
           box-shadow: 0 4px 16px rgba(227,176,75,0.07);
-          padding: 1.2rem;
+          padding: 0.95rem;
           width: 100%;
         }
         .half-control-card {
@@ -281,12 +281,12 @@ const HalfYearCompletion: React.FC = () => {
           flex-wrap: wrap;
         }
         .half-control-label {
-          font-size: 0.92rem;
+          font-size: 0.85rem;
           font-weight: 700;
           color: ${COLORS.textSub};
         }
         .half-select {
-          padding: 0.7rem 1rem;
+          padding: 0.6rem 0.9rem;
           border-radius: 12px;
           border: 1px solid #333;
           background: #111;
@@ -299,7 +299,7 @@ const HalfYearCompletion: React.FC = () => {
           gap: 0.5rem;
         }
         .half-segment-button {
-          padding: 0.75rem 1rem;
+          padding: 0.6rem 0.85rem;
           border-radius: 12px;
           border: 1px solid #333;
           background: #111;
@@ -315,12 +315,12 @@ const HalfYearCompletion: React.FC = () => {
         .half-summary {
           display: flex;
           flex-direction: column;
-          gap: 0.25rem;
+          gap: 0.2rem;
           color: ${COLORS.textMain};
-          font-size: 0.95rem;
+          font-size: 0.9rem;
         }
         .half-summary strong {
-          font-size: 1.2rem;
+          font-size: 1.05rem;
           font-weight: 800;
           color: ${COLORS.primary};
         }
@@ -334,7 +334,7 @@ const HalfYearCompletion: React.FC = () => {
         }
         .half-table th,
         .half-table td {
-          padding: 0.85rem 0.9rem;
+          padding: 0.7rem 0.7rem;
           border-bottom: 1px solid #333;
           text-align: left;
           vertical-align: middle;
@@ -346,8 +346,8 @@ const HalfYearCompletion: React.FC = () => {
         }
         .half-status-tag {
           display: inline-block;
-          margin-left: 0.5rem;
-          padding: 0.1rem 0.45rem;
+          margin-left: 0.4rem;
+          padding: 0.1rem 0.4rem;
           border-radius: 999px;
           font-size: 0.75rem;
           color: #fff;
@@ -391,7 +391,7 @@ const HalfYearCompletion: React.FC = () => {
           display: inline-flex;
           justify-content: center;
           align-items: center;
-          padding: 0.4rem 0.7rem;
+          padding: 0.35rem 0.6rem;
           border-radius: 12px;
           border: 1px solid #333;
           background: #111;
