@@ -103,7 +103,15 @@ const HalfYearCompletion: React.FC = () => {
         });
 
         combined.sort((a, b) => {
-          if (a.isComplete !== b.isComplete) return a.isComplete ? -1 : 1;
+          const groupOrder = (record: HalfYearRecord) => {
+            if (record.combinedStatus === '부상') return 1;
+            if (record.isComplete) return 0;
+            return 2;
+          };
+
+          const orderDiff = groupOrder(a) - groupOrder(b);
+          if (orderDiff !== 0) return orderDiff;
+
           if (a.totalCount !== b.totalCount) return b.totalCount - a.totalCount;
           return a.name.localeCompare(b.name, 'ko-KR');
         });
@@ -185,27 +193,35 @@ const HalfYearCompletion: React.FC = () => {
                 </tr>
               </thead>
               <tbody>
-                {records.map((record) => (
-                  <tr key={record.name} className={record.isComplete ? 'half-row-complete' : ''}>
-                    <td>{record.name}</td>
-                    <td>
-                      {record.q1.count}/{record.q1.required}
-                      <span className="half-status-tag">{record.q1.status === '부상' ? '부상' : record.q1.status === 'full' ? '✓' : record.q1.status === 'minus_one' ? '△' : 'X'}</span>
-                    </td>
-                    <td>
-                      {record.q2.count}/{record.q2.required}
-                      <span className="half-status-tag">{record.q2.status === '부상' ? '부상' : record.q2.status === 'full' ? '✓' : record.q2.status === 'minus_one' ? '△' : 'X'}</span>
-                    </td>
-                    <td>{record.totalCount}/{record.totalRequired}</td>
-                    <td className={record.isComplete ? 'half-complete' : 'half-failed'}>
-                      {record.combinedStatus === '부상'
-                        ? '부상'
-                        : record.combinedStatus === 'full' || record.combinedStatus === 'minus_one'
-                          ? '완료'
-                          : '미완'}
-                    </td>
-                  </tr>
-                ))}
+                {records.map((record) => {
+                  const rowClass = record.combinedStatus === '부상'
+                    ? 'half-row-injured'
+                    : record.isComplete
+                      ? 'half-row-complete'
+                      : 'half-row-failed';
+
+                  return (
+                    <tr key={record.name} className={rowClass}>
+                      <td>{record.name}</td>
+                      <td>
+                        {record.q1.count}/{record.q1.required}
+                        <span className="half-status-tag">{record.q1.status === '부상' ? '부상' : record.q1.status === 'full' ? '✓' : record.q1.status === 'minus_one' ? '△' : 'X'}</span>
+                      </td>
+                      <td>
+                        {record.q2.count}/{record.q2.required}
+                        <span className="half-status-tag">{record.q2.status === '부상' ? '부상' : record.q2.status === 'full' ? '✓' : record.q2.status === 'minus_one' ? '△' : 'X'}</span>
+                      </td>
+                      <td>{record.totalCount}/{record.totalRequired}</td>
+                      <td className={record.combinedStatus === '부상' ? 'half-injured' : record.isComplete ? 'half-complete' : 'half-failed'}>
+                        {record.combinedStatus === '부상'
+                          ? '부상'
+                          : record.combinedStatus === 'full' || record.combinedStatus === 'minus_one'
+                            ? '완료'
+                            : '미완'}
+                      </td>
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
           )}
@@ -339,10 +355,12 @@ const HalfYearCompletion: React.FC = () => {
           text-align: left;
           vertical-align: middle;
           color: ${COLORS.textMain};
+          font-size: 0.82rem;
         }
         .half-table thead th {
           color: ${COLORS.textSub};
           font-weight: 700;
+          font-size: 0.78rem;
         }
         .half-status-tag {
           display: inline-block;
@@ -363,6 +381,12 @@ const HalfYearCompletion: React.FC = () => {
         }
         .half-row-complete {
           background: rgba(34,197,94,0.06);
+        }
+        .half-row-failed {
+          background: rgba(239,68,68,0.06);
+        }
+        .half-row-injured {
+          background: rgba(245,158,11,0.12);
         }
         .half-loading {
           min-height: 180px;
