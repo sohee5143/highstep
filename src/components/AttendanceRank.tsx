@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import { AttendanceRecord } from '../types';
 import { loadAllChecks } from '../utils/localAttendance';
 import { fetchAttendanceSummary } from '../utils/attendanceSummary';
+import { getCurrentQuarter } from '../utils/quarters';
 import { COLORS } from '../constants/colors';
 
 type RankedRecord = AttendanceRecord & {
@@ -104,6 +105,7 @@ const PodiumColumn: React.FC<{
 
 const AttendanceRank: React.FC = () => {
   const checks = useMemo(() => loadAllChecks(), []);
+  const currentQuarterInfo = getCurrentQuarter();
 
   const [records, setRecords] = useState<AttendanceRecord[]>([]);
   const [dbMemberNames, setDbMemberNames] = useState<string[]>([]);
@@ -165,7 +167,7 @@ const AttendanceRank: React.FC = () => {
           />
         </Link>
         <h2 className="rank-title">출석 랭킹</h2>
-        <p className="rank-desc">2026년 상반기(2월, 3월, 4월) 정기운동 출석왕</p>
+        <p className="rank-desc">{currentQuarterInfo.label}({currentQuarterInfo.months.join(', ')}월) 출석현황</p>
       </header>
 
       <main className="rank-main">
